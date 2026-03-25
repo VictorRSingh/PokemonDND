@@ -13,7 +13,7 @@ Generate full DnD-style character sheets for your favorite Pokémon — with cus
 
 ## 🚀 Live Demo
 
-🌍 [Visit the app](https;//pokemon.victorsingh.ca)  
+🌍 [Try the app](https://pokemon.victorsingh.ca)  
 📦 [View the repo](https://github.com/VictorRSingh/PokemonDND)
 
 ## 🛠️ Tech Stack
