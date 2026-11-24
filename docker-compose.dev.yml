@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: pokemondnd-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pokemon
+      POSTGRES_PASSWORD: pokemon_dev_password
+      POSTGRES_DB: pokemondnd
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pokemon_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pokemon -d pokemondnd"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pokemon_db_data:
