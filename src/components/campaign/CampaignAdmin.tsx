@@ -1,10 +1,19 @@
 import {useState} from 'react';
+import {useRouter} from 'next/router';
 import {request} from '@/lib/game-client';
 import type {CampaignEntry,Member} from '@/lib/campaign-client';
 import type {CampaignSettings} from '@/db/schema/campaigns';
 const field='w-full rounded-md border border-slate-700 bg-slate-950 p-2';
 export default function CampaignAdmin({entry,members,onRefresh}:{entry:CampaignEntry;members:Member[];onRefresh:()=>void}){
  const c=entry.campaign;
+ const router=useRouter();
+ const [confirmName,setConfirmName]=useState('');
+ async function removeCampaign(){
+  if(busy||confirmName!==c.name)return;
+  setBusy(true);setError('');
+  try{await request(`/api/campaigns/${c.id}`,'DELETE');await router.replace('/campaigns');}
+  catch(e){setError(e instanceof Error?e.message:'Unable to delete campaign');setBusy(false);}
+ }
  const [name,setName]=useState(c.name),[description,setDescription]=useState(c.description),[dmMode,setDmMode]=useState(c.dmMode),[ownerIsPlayer,setOwnerIsPlayer]=useState(entry.membership.isPlayer),[settings,setSettings]=useState(c.settings),[busy,setBusy]=useState(false),[error,setError]=useState('');
  function change<K extends keyof CampaignSettings>(key:K,value:CampaignSettings[K]){setSettings(s=>({...s,[key]:value}));}
  async function run(action:()=>Promise<unknown>){setBusy(true);setError('');try{await action();onRefresh();}catch(e){setError(e instanceof Error?e.message:'Request failed');}finally{setBusy(false);}}
@@ -20,5 +29,12 @@ export default function CampaignAdmin({entry,members,onRefresh}:{entry:CampaignE
  <button className="rounded-md bg-yellow-400 px-4 py-2 font-semibold text-slate-950" type="submit">Save settings</button></fieldset></form>
  <h3 className="mt-8 font-bold">Manage members</h3><p className="text-sm text-slate-400">Role changes preserve existing trainers. Save or discard settings edits before changing roles.</p>{members.filter(m=>m.userId!==c.ownerId&&m.status==='active').map(m=><div key={m.id} className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-3"><span className="mr-auto">{m.name||'Trainer'}</span><button disabled={busy||c.dmMode==='automated'} className="rounded border border-slate-600 p-2 disabled:opacity-50" onClick={()=>void run(()=>request(`${path}/members/${m.id}`,'PATCH',{isDm:!m.isDm}))}>{m.isDm?'Revoke DM':'Grant DM'}</button><button disabled={busy} className="rounded border border-slate-600 p-2" onClick={()=>void run(()=>request(`${path}/members/${m.id}`,'PATCH',{isPlayer:!m.isPlayer}))}>{m.isPlayer?'Revoke trainer':'Grant trainer'}</button><button disabled={busy} className="text-red-400" onClick={()=>{if(window.confirm(`Remove ${m.name||'this member'}?`))void run(()=>request(`${path}/members/${m.id}`,'DELETE'));}}>Remove</button></div>)}
  <h3 className="mt-6 font-bold">Inactive members</h3>{members.filter(m=>m.status!=='active').map(m=><div key={m.id} className="mt-3 flex items-center gap-3"><span className="mr-auto">{m.name||'Trainer'} · {m.status}</span><button disabled={busy} className="rounded border border-slate-600 p-2" onClick={()=>void run(()=>request(`${path}/members/${m.id}`,'POST',{}))}>Restore trainer</button></div>)}
+ <div className="mt-8 space-y-3 rounded-lg border border-red-900 p-4">
+ <h3 className="font-bold text-red-400">Danger Zone</h3>
+ <p className="text-sm text-slate-300">{c.status==='archived'?'Activate this campaign again to resume normal availability.':'Archive this campaign to prevent new invitations, joining and trainer creation without deleting its data.'}</p>
+ <button type="button" disabled={busy} className="rounded border border-slate-600 px-4 py-2 disabled:opacity-50" onClick={()=>{if(window.confirm(c.status==='archived'?'Activate this campaign?':'Archive this campaign?'))void run(()=>request(path,'PATCH',{status:c.status==='archived'?'active':'archived'}));}}>{c.status==='archived'?'Activate campaign':'Archive campaign'}</button>
+ <div className="border-t border-red-900 pt-4"><h4 className="font-semibold">Delete campaign permanently</h4><p className="my-2 text-sm text-slate-300">All campaign members, invitations, trainers and Pokémon will be deleted. Personal trainers and Pokémon are unaffected. This cannot be undone.</p>
+ <label className="block text-sm">Type <strong className="break-all">{c.name}</strong> to confirm<input className={field} value={confirmName} disabled={busy} onChange={e=>setConfirmName(e.target.value)} autoComplete="off"/></label>
+ <button type="button" disabled={busy||confirmName!==c.name} className="mt-3 rounded bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-40" onClick={()=>void removeCampaign()}>Delete campaign</button></div></div>
  </section>;
 }

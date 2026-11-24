@@ -61,6 +61,7 @@ export async function updateCampaign(userId: string, id: string, input: UpdateIn
     if (!isDm && members.some(m=>m.id!==membership.id && m.isDm)) throw new ApiError(409,"Revoke other DM roles before switching to automated DM");
     if (members.filter(m=>m.id!==membership.id && m.isPlayer).length + Number(isPlayer) > settings.maxPlayers) throw new ApiError(409,"Player capacity exceeded");
     const now = new Date();
+    if (fields.status === "archived") await tx.update(campaignInvitations).set({revokedAt:now}).where(and(eq(campaignInvitations.campaignId,id),isNull(campaignInvitations.revokedAt)));
     await tx.update(campaignMembers).set({isDm,isPlayer,updatedAt:now}).where(eq(campaignMembers.id,membership.id));
     if (!settings.allowPlayerInvites) {
       const creators = members.filter(m=>m.userId!==userId && !m.isDm).map(m=>m.userId);
