@@ -15,6 +15,7 @@ export default function SiteHeader({ inApp = false }: { inApp?: boolean }) {
             {status === "loading" ? <span role="status" className="text-slate-400">Loading…</span> : session?.user ? (
               <>
                 <Link href="/app" className="hover:text-yellow-400">{inApp ? "Characters" : "Dashboard"}</Link>
+                <Link href="/campaigns" className="hover:text-yellow-400">Campaigns</Link>
                 <details className="relative z-30">
                   <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-700 px-3 py-2">
                     {session.user.image && <img src={session.user.image} alt="" referrerPolicy="no-referrer" className="h-8 w-8 rounded-full" />}
