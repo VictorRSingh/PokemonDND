@@ -11,6 +11,10 @@ const unique = <T>(values: T[]): T[] => [...new Set(values)];
 const strings = (value: unknown): string[] => { if (!Array.isArray(value) || value.some(x => typeof x !== 'string')) throw new Error('Expected string array'); return value.map(x=>x.trim()).filter(Boolean); };
 const number = (value: unknown, min: number, max = Infinity): number => { if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) throw new Error('Invalid integer'); return value; };
 
+/** Exact malformed source tokens; never infer replacement TM numbers. */
+export const unresolvedTmTokens: Readonly<Record<string, string>> = Object.freeze({
+  Graveler: '8087', Cherrim: '8687', 'Alolan Sandslash': '566', Toxapex: '109', Mimikyu: '0',
+});
 /** Source-verified corrections, scoped to the exact original record. */
 function corrected(raw: Record<string, unknown>): Record<string, unknown> {
   if (['Ho-oh','Shaymin Land'].includes(String(raw.name))) return {...raw,tm:strings(raw.tm).filter(t=>t!=='© Game Freak'&&t!=='or © Nintendo Company Inc.')};
@@ -62,11 +66,11 @@ export function normalizePokemon(raw: unknown, speciesNames: readonly string[]):
     field='abilities'; const abilityIds=unique(strings(r.abilities).filter(a=>a.toLowerCase()!=='none').map(a=>canonicalId(a.split(':')[0])));
     const hidden=typeof r.hidden_ability==='string'?canonicalId(r.hidden_ability.split(':')[0]):undefined;
     field='evolution'; const evolution=evolutions(r.evolution,speciesNames);
-    field='tm'; const tmIds=unique(strings(r.tm).flatMap(t=>{if(t==='EVERY \"TM\"')return Array.from({length:100},(_,i)=>String(i+1).padStart(2,'0'));if(t==='None')return [];if(/^100 (?:10[1-9]|11[0-8])(?: Zygarde Complete)?$/.test(t)||t.startsWith('100 Portions of the material'))return ['100'];if(/^None \d+$/.test(t))return []; if(!/^[\d\s.,]+$/.test(t))throw new Error('Invalid TM '+t);return (t.match(/\d+/g)??[]).map(n=>String(number(Number(n),1,100)).padStart(2,'0'));}));
+    field='tm'; const unresolvedTmReferences = strings(r.tm).filter(t=>t===unresolvedTmTokens[name]); const tmIds=unique(strings(r.tm).filter(t=>!unresolvedTmReferences.includes(t)).flatMap(t=>{if(t==='EVERY \"TM\"')return Array.from({length:100},(_,i)=>String(i+1).padStart(2,'0'));if(t==='None')return [];if(/^100 (?:10[1-9]|11[0-8])(?: Zygarde Complete)?$/.test(t)||t.startsWith('100 Portions of the material'))return ['100'];if(/^None \d+$/.test(t))return []; if(!/^[\d\s.,]+$/.test(t))throw new Error('Invalid TM '+t);return (t.match(/\d+/g)??[]).map(n=>String(number(Number(n),1,100)).padStart(2,'0'));}));
     field='armor_class';const armorClass=number(r.armor_class,1);field='hit_points';const baseHP=number(r.hit_points,1);
     field='resistances';const resistances=elements(strings(r.resistances));field='vulnerabilities';const vulnerabilities=elements(strings(r.vulnerabilities));field='immunities';const immunities=elements(strings(r.immunities));
     field='skills/senses';const proficientSkills=strings(r.proficient_skills).filter(s=>s.toLowerCase()!=='none');const senses=strings(r.senses).filter(s=>s.toLowerCase()!=='none');
-    return {ok:true,value:{id:canonicalId(name),number:dex,name,size:size as CreatureSize,types:types as [ElementalType,...ElementalType[]],baseLevel,speciesRating,armorClass,baseHP,hitDie,speed,abilityScores,proficientSkills,savingThrows,resistances,vulnerabilities,immunities,senses,abilityIds,hiddenAbilityId:hidden&&hidden!=='none'?hidden:undefined,learnset,tmIds,evolutions:evolution}};
+    return {ok:true,value:{id:canonicalId(name),number:dex,name,size:size as CreatureSize,types:types as [ElementalType,...ElementalType[]],baseLevel,speciesRating,armorClass,baseHP,hitDie,speed,abilityScores,proficientSkills,savingThrows,resistances,vulnerabilities,immunities,senses,abilityIds,hiddenAbilityId:hidden&&hidden!=='none'?hidden:undefined,learnset,tmIds,unresolvedTmReferences,evolutions:evolution}};
   } catch(e) {const issue:DataIssue={dataset:'pokemon_master_list',record,field,message:e instanceof Error?e.message:String(e)};return {ok:false,issues:[issue]};}
 }
 export function normalizePokemonDataset(raw: readonly unknown[]) {

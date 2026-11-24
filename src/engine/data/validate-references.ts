@@ -10,6 +10,7 @@ export function validateGameReferences(rawSpecies: readonly unknown[], rawMoves:
   const references: DataIssue[]=[];
   for(const x of p.species) {
     const check=(field:string,id:string,ids:Set<string>)=>{if(!ids.has(id))references.push({dataset:'pokemon_master_list',record:x.name,field,message:'Unresolved reference: '+id});};
+    for(const token of x.unresolvedTmReferences ?? []) references.push({dataset:'pokemon_master_list',record:x.name,field:'tm',message:'Unresolved source TM: '+token});
     for(const l of x.learnset)check('learnset',l.moveId,moves);
     for(const id of x.abilityIds)check('abilities',id,abilities);
     if(x.hiddenAbilityId)check('hidden_ability',x.hiddenAbilityId,abilities);

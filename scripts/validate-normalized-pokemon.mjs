@@ -20,6 +20,9 @@ try {
   assert.equal(get('Alolan Muk').hitDie.sides,12);assert.equal(get('Shedinja').hitDie.kind,'special');
   assert.equal(get('Type: Null').evolutions[0].requirement.kind,'all');assert.equal(get('Zygarde Complete Forme').number,718);
   assert.notEqual(get('Meowstic ♂').id,get('Meowstic ♀').id);
-  console.log(JSON.stringify({input:raw.length,normalized:result.species.length,quarantined:result.issues.length,issues:result.issues},null,2));
+  const unresolvedTmReferences=result.species.flatMap(p=>(p.unresolvedTmReferences??[]).map(token=>({species:p.name,token})));
+  assert.equal(unresolvedTmReferences.length,5);
+  for(const {species,token} of unresolvedTmReferences) assert.ok(!get(species).tmIds.includes(token));
+  console.log(JSON.stringify({unresolvedTmReferences,input:raw.length,normalized:result.species.length,quarantined:result.issues.length,issues:result.issues},null,2));
   if(process.argv.includes('--strict')&&result.issues.length)process.exitCode=1;
 } finally {rmSync(dir,{recursive:true,force:true});}

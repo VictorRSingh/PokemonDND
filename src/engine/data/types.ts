@@ -35,7 +35,7 @@ export interface PokemonSpeciesDefinition {
   readonly proficientSkills: readonly string[]; readonly savingThrows: readonly AbilityKey[];
   readonly resistances: readonly ElementalType[]; readonly vulnerabilities: readonly ElementalType[]; readonly immunities: readonly ElementalType[];
   readonly senses: readonly string[]; readonly abilityIds: readonly AbilityId[]; readonly hiddenAbilityId?: AbilityId;
-  readonly learnset: readonly LearnsetEntry[]; readonly tmIds: readonly string[]; readonly evolutions: readonly EvolutionDefinition[];
+  readonly learnset: readonly LearnsetEntry[]; readonly tmIds: readonly string[]; readonly unresolvedTmReferences?: readonly string[]; readonly evolutions: readonly EvolutionDefinition[];
   readonly source?: SourceReference;
 }
 export interface MoveDefinition {
