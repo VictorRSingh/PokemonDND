@@ -7,7 +7,7 @@ import { Character } from "@/classes/Character";
 import { CharacterTable } from "@/classes/database/CharacterTable";
 import { Pokemon } from "@/classes/Pokemon";
 import { useAtom } from "jotai";
-import React, { useEffect } from "react";
+import React from "react";
 
 const PokemonHBBar = () => {
   const [selectedPokemon, setSelectedPokemon] = useAtom(selectedPokemonAtom);
@@ -23,7 +23,7 @@ const PokemonHBBar = () => {
 
     const handleHPChange = (hp: string) => {
 
-      console.log(Number(hp));
+      if (!selectedPokemon || !Number.isFinite(Number(hp))) return;
       if(Number(hp) < 0 || Number(hp) > selectedPokemon?.hit_points!) {
         return;
       }
@@ -73,31 +73,37 @@ const PokemonHBBar = () => {
   return (
     <>
       {selectedPokemon && (
-        <div className="p-2 flex flex-col gap-y-2">
-          <div className="h-4 bg-gray-700 rounded-box ">
+        <div className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 flex flex-col gap-3">
+          <div className="h-3 overflow-hidden bg-slate-700 rounded-full">
             <div
-              className={`h-full rounded-box ${
+              className={`h-full rounded-full transition-all ${
                 hpPercentage > 50
                   ? "bg-green-500"
                   : hpPercentage > 20
                   ? "bg-yellow-500"
                   : "bg-red-500"
               }`}
-              style={{ width: `${hpPercentage}%` }}
+              style={{ width: `${Number.isFinite(hpPercentage) ? Math.max(0, Math.min(100, hpPercentage)) : 0}%` }}
             ></div>
           </div>
-          <p className="flex gap-x-2">
-            <h1>HP: </h1>
+          <div className="flex items-center gap-2 text-sm">
+            <label htmlFor="pokemon-hp">HP:</label>
             <input
+              id="pokemon-hp"
               type="number"
+              min={0}
+              max={selectedPokemon.hit_points}
               onChange={(e) => {
                 handleHPChange(e.target.value);
               }}
               value={selectedPokemon?.current_hit_points!}
-              className="w-14 text-black bg-gray-500"
+              className="w-16 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-white"
             ></input>
-            /<p>{selectedPokemon?.hit_points}</p>
-          </p>
+            / <span>{selectedPokemon.hit_points}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {[{label: "−1", hp: Math.max(0, (selectedPokemon.current_hit_points ?? selectedPokemon.hit_points) - 1)}, {label: "+1", hp: Math.min(selectedPokemon.hit_points, (selectedPokemon.current_hit_points ?? selectedPokemon.hit_points) + 1)}, {label: "Full", hp: selectedPokemon.hit_points}].map(action => <button key={action.label} type="button" onClick={() => handleHPChange(String(action.hp))} className="rounded bg-slate-800 px-2 py-1 text-sm text-slate-100 hover:bg-slate-700">{action.label}</button>)}
+          </div>
         </div>
       )}
     </>
