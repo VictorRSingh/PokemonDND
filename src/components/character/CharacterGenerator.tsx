@@ -19,7 +19,8 @@ const CharacterGenerator = () => {
       if (newCharacter) {
         if (!characterTable?.exists(newCharacter.name)) {
           // Create a new CharacterTable with updated records
-          const updatedTable = new CharacterTable();
+          if (!characterTable) return;
+          const updatedTable = new CharacterTable(characterTable.tableName);
           updatedTable.records = [...(characterTable?.records || []), newCharacter];
           updatedTable.saveTableToStorage();
     

@@ -8,7 +8,7 @@ export class CharacterTable implements ITable<Character>, ICrud<Character> {
   tableName: string;
   records: Character[];
 
-  constructor(tableName: string = "CharacterTable") {
+  constructor(tableName: string) {
     this.tableName = tableName;
     this.records = this.loadTableFromStoage();
 

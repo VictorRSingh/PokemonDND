@@ -24,7 +24,7 @@ export default function Home() {
                 <Link href="/app" className="rounded-xl bg-yellow-400 px-6 py-4 font-bold text-slate-950 transition hover:bg-yellow-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400">Start your adventure <span aria-hidden="true">→</span></Link>
                 <a href="#features" className="rounded-xl border border-slate-700 px-6 py-4 font-semibold hover:bg-slate-800">Explore features</a>
               </div>
-              <p className="mt-5 text-sm text-slate-400">Free to use · No account required · Saved in this browser</p>
+              <p className="mt-5 text-sm text-slate-400">Free to use · Discord account required · Saved in this browser</p>
             </div>
             <div className="relative mx-auto w-full max-w-xl">
               <div aria-hidden="true" className="absolute inset-10 rounded-full bg-blue-500/20 blur-3xl"/>

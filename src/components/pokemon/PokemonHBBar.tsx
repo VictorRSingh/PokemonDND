@@ -23,7 +23,7 @@ const PokemonHBBar = () => {
 
     const handleHPChange = (hp: string) => {
 
-      if (!selectedPokemon || !Number.isFinite(Number(hp))) return;
+      if (!characterTable || !selectedCharacter || !selectedPokemon || !Number.isFinite(Number(hp))) return;
       if(Number(hp) < 0 || Number(hp) > selectedPokemon?.hit_points!) {
         return;
       }
@@ -39,7 +39,7 @@ const PokemonHBBar = () => {
     
       if (characterUpdated) {
         // Reinitialize the CharacterTable class with updated records
-        const newCharacterTable = new CharacterTable(characterTable?.tableName);
+        const newCharacterTable = new CharacterTable(characterTable.tableName);
         newCharacterTable.records = characterTable?.records as Character[]; // Retain the updated records
         setCharacterTable(newCharacterTable); // Set as the new instance
     

@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { characterTableAtom, selectedCharacterAtom } from "@/atoms/atoms";
 import { Character } from "@/classes/Character";
 import { CharacterTable } from "@/classes/database/CharacterTable";
@@ -104,7 +105,7 @@ export default function App() {
           </div>
         )}
       </section>
-      <p className="mt-8 text-xs text-slate-500">Characters are currently saved in this browser.</p>
+      <p className="mt-8 text-xs text-slate-500">Characters are saved in this browser under your account. Cloud synchronization is not enabled yet.</p>
       <Modal modal_id="create_character" modalTitle="Create character" showModal={creating} setShowModal={setCreating} actionButton={<button type="submit" form="character-form" disabled={!name.trim()} className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-50">Create</button>}>
         <form id="character-form" onSubmit={e => { e.preventDefault(); create(); }}>
           <label htmlFor="character-name" className="font-semibold">Character name</label>
@@ -117,3 +118,5 @@ export default function App() {
     </div>
   );
 }
+
+export const getServerSideProps = requireSession;

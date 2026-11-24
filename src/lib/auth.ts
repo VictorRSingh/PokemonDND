@@ -12,7 +12,7 @@ import {
 } from "../db/schema/auth";
 
 export const authOptions: NextAuthOptions = {
-  debug: true,
+  debug: false,
 
   adapter: DrizzleAdapter(db, {
     usersTable: users,
@@ -31,6 +31,13 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "database",
+  },
+
+  callbacks: {
+    session({ session, user }) {
+      session.user.id = user.id;
+      return session;
+    },
   },
 
   secret: process.env.NEXTAUTH_SECRET,
