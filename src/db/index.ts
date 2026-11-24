@@ -1,6 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import * as schema from "./schema/auth";
+import * as authSchema from "./schema/auth";
+import * as gameSchema from "./schema/game";
+const schema = { ...authSchema, ...gameSchema };
 
 const globalForDb = globalThis as unknown as {
   pool: Pool | undefined;
