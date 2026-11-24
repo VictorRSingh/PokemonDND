@@ -1,3 +1,4 @@
+import SiteHeader from "@/components/layout/SiteHeader";
 import { characterTableAtom } from "@/atoms/atoms";
 import { CharacterTable } from "@/classes/database/CharacterTable";
 import "@/styles/globals.css";
@@ -7,7 +8,7 @@ import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import Head from "next/head";
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps, router }: AppProps) {
   const [characterTable, setCharacterTable] = useAtom(characterTableAtom);
 
   useEffect(() => {
@@ -19,12 +20,21 @@ export default function App({ Component, pageProps }: AppProps) {
     Initialize();
   }, []);
 
+  const inApp = router.pathname === "/app" || router.pathname.startsWith("/dm/");
+
   return (
     <div className="h-full w-full">
       <Head>
-        <title>PokmonDND Generator | pokemon.victorsingh.ca</title>
+        <title>PokemonDND Generator | pokemon.victorsingh.ca</title>
       </Head>
-      <Component {...pageProps} />
+      {inApp ? (
+        <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+          <SiteHeader inApp />
+          <main className="flex-1 min-w-0 flex flex-col">
+            <Component {...pageProps} />
+          </main>
+        </div>
+      ) : <Component {...pageProps} />}
       <Toaster />
     </div>
   );
