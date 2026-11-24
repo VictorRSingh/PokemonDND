@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { Character } from "@/classes/Character";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
@@ -82,3 +83,5 @@ export default function CharacterPage() {
     </div>
   );
 }
+
+export const getServerSideProps = requireSession;

@@ -39,7 +39,8 @@ const CharacterSelector = () => {
   
     if (updatedCharactersRecords && updatedCharactersRecords.length !== characterTable?.records.length) {
       // Create a new CharacterTable with updated records
-      const updatedTable = new CharacterTable();
+      if (!characterTable) return;
+          const updatedTable = new CharacterTable(characterTable.tableName);
       updatedTable.records = updatedCharactersRecords;
       updatedTable.saveTableToStorage();
   
