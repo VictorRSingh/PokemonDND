@@ -17,10 +17,18 @@ try {
   const before=JSON.stringify(raw);
   const result=validateGameReferences(...raw);
   assert.equal(JSON.stringify(raw),before);
-  assert.equal(result.unavailableMoveReferences.length,2);
   assert.ok(result.unavailableMoveReferences.every(x=>x.field==='learnset'));
   assert.equal(normalizeAbilityDataset([{name:'test',abilities:[],hidden_ability:[]}]).issues.length,0);
   assert.equal(normalizeAbilityDataset([{name:'test',abilities:[],hidden_ability:['bad']}]).issues.length,1);
+  // Regression checks on isolated copies: unknown references must not be waived.
+  const changed=structuredClone(raw[0]);
+  const bulbasaur=changed.find(x=>x.name==='Bulbasaur');
+  bulbasaur.moves.starting_moves.push('Unknown Test Move');
+  const badMove=validateGameReferences(changed,raw[1],raw[2]);
+  assert.ok(badMove.referenceIssues.some(x=>x.record==='Bulbasaur' && x.field==='learnset' && x.message.includes('unknown-test-move')));
+  const badTm=structuredClone(raw[0]);
+  badTm.find(x=>x.name==='Bulbasaur').tm.push('8087');
+  assert.ok(validateGameReferences(badTm,raw[1],raw[2]).normalizationIssues.some(x=>x.record==='Bulbasaur' && x.field==='tm'));
   console.log(JSON.stringify(result,null,2));
   if(process.argv.includes('--strict')&&(result.normalizationIssues.length||result.referenceIssues.length||result.abilityConflicts.length))process.exitCode=1;
 } finally {rmSync(dir,{recursive:true,force:true});}
