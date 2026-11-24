@@ -1,0 +1,33 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const dir=mkdtempSync(join(tmpdir(),'pokemon-normalize-'));
+try {
+  const tsc=require.resolve('typescript/bin/tsc');
+  execFileSync(process.execPath,[tsc,'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--moduleResolution','node','--outDir',dir,'src/engine/data/index.ts'],{stdio:'inherit'});
+  writeFileSync(join(dir,'package.json'),'{"type":"commonjs"}');
+  const {createGameDataRegistry}=require(join(dir,'index.js'));
+  const root=resolve(process.argv.slice(2).find(a=>!a.startsWith('--'))??'public/data');
+  const load=name=>JSON.parse(readFileSync(join(root,name+'.json'),'utf8'));
+  const raw=[load('pokemon_master_list'),load('move_list'),load('nature_list')];
+  const before=JSON.stringify(raw);
+  const r=createGameDataRegistry(...raw);
+  assert.equal(r.species.length,856);assert.equal(r.moves.length,673);assert.equal(r.abilities.length,235);assert.equal(r.natures.length,20);
+  assert.equal(r.getSpecies('Charmander').id,'charmander');assert.equal(r.getMove('Scratch').id,'scratch');assert.equal(r.getAbility('Blaze').id,'blaze');assert.equal(r.getNature('Brave').id,'brave');
+  assert.ok(r.getSpeciesByNumber(479).length>1);assert.ok(r.getSpeciesByType('fire').every(x=>x.types.includes('fire')));
+  assert.ok(r.getEvolutionTargets('charmander').some(x=>x.id==='charmeleon'));
+  assert.ok(r.getEvolutionChain('charmander').some(x=>x.id==='charizard'));
+  assert.ok(r.getLearnableMoves('charmander',6).some(x=>x.entry.moveId==='ember'));
+  assert.ok(r.getLearnableMoves('blacephalon',18).some(x=>x.kind==='unavailable'&&x.move.id==='mind-blown'));
+  assert.equal(r.getMove('mind-blown'),undefined);assert.ok(r.getUnavailableMove('mind-blown'));
+  assert.ok(r.getSpeciesAbility('charmander','blaze'));assert.equal(r.getSpeciesAbility('charmander','torrent'),undefined);
+  assert.ok(Object.isFrozen(r.species[0].abilityScores));assert.throws(()=>{r.species[0].abilityScores.str=999;},TypeError);
+  assert.throws(()=>r.getLearnableMoves('charmander',21),RangeError);
+  assert.equal(JSON.stringify(raw),before);
+  const bad=structuredClone(raw[0]);bad.find(x=>x.name==='Bulbasaur').moves.starting_moves.push('Unknown Test Move');assert.throws(()=>createGameDataRegistry(bad,raw[1],raw[2]),/strict validation/);
+  console.log(JSON.stringify({species:r.species.length,moves:r.moves.length,abilities:r.abilities.length,natures:r.natures.length,unavailable:r.unavailableMoves.length,result:'passed'},null,2));
+} finally {rmSync(dir,{recursive:true,force:true});}
