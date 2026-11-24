@@ -1,7 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "@/db";
-import { campaigns, campaignMembers } from "@/db/schema/campaigns";
+import { campaigns, campaignMembers, campaignInvitations } from "@/db/schema/campaigns";
 import { ApiError } from "@/lib/game-api";
 import type { createCampaignInput, updateCampaignInput } from "@/lib/campaign-validation";
 
@@ -62,6 +62,10 @@ export async function updateCampaign(userId: string, id: string, input: UpdateIn
     if (members.filter(m=>m.id!==membership.id && m.isPlayer).length + Number(isPlayer) > settings.maxPlayers) throw new ApiError(409,"Player capacity exceeded");
     const now = new Date();
     await tx.update(campaignMembers).set({isDm,isPlayer,updatedAt:now}).where(eq(campaignMembers.id,membership.id));
+    if (!settings.allowPlayerInvites) {
+      const creators = members.filter(m=>m.userId!==userId && !m.isDm).map(m=>m.userId);
+      if (creators.length) await tx.update(campaignInvitations).set({revokedAt:now}).where(and(eq(campaignInvitations.campaignId,id),inArray(campaignInvitations.createdBy,creators),isNull(campaignInvitations.revokedAt)));
+    }
     const [updated] = await tx.update(campaigns).set({...fields,dmMode,settings,updatedAt:now}).where(eq(campaigns.id,id)).returning();
     return updated;
   });

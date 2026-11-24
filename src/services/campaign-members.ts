@@ -1,6 +1,6 @@
-import { and, eq, asc } from "drizzle-orm";
+import { and, eq, asc, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { campaigns, campaignMembers } from "@/db/schema/campaigns";
+import { campaigns, campaignMembers, campaignInvitations } from "@/db/schema/campaigns";
 import { users } from "@/db/schema/auth";
 import { ApiError } from "@/lib/game-api";
 import { requireCampaignMember, requireCampaignOwner } from "./campaign-permissions";
@@ -39,6 +39,9 @@ export async function changeCampaignMember(userId: string, campaignId: string, m
     const [updated] = await tx.update(campaignMembers).set(patch === null
       ? { status: "removed", leftAt: now, isDm: false, isPlayer: false, updatedAt: now }
       : { ...patch, updatedAt: now }).where(eq(campaignMembers.id, target.id)).returning();
+    if (patch === null || (next && !next.isDm && !(next.isPlayer && campaign.settings.allowPlayerInvites))) {
+      await tx.update(campaignInvitations).set({revokedAt: now}).where(and(eq(campaignInvitations.campaignId,campaignId),eq(campaignInvitations.createdBy,target.userId),isNull(campaignInvitations.revokedAt)));
+    }
     return updated;
   });
 }
@@ -52,6 +55,7 @@ export async function leaveCampaign(userId: string, campaignId: string) {
     if(campaign.dmMode!=="automated" && !active.some(m=>m.id!==membership.id && m.isDm)) throw new ApiError(409,"Campaign requires a DM");
     const now=new Date();
     await tx.update(campaignMembers).set({status:"left",isDm:false,isPlayer:false,leftAt:now,updatedAt:now}).where(eq(campaignMembers.id,membership.id));
+    await tx.update(campaignInvitations).set({revokedAt:now}).where(and(eq(campaignInvitations.campaignId,campaignId),eq(campaignInvitations.createdBy,userId),isNull(campaignInvitations.revokedAt)));
   });
 }
 export async function restoreCampaignMember(userId:string,campaignId:string,memberId:string) {

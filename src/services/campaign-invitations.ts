@@ -39,6 +39,8 @@ export async function joinCampaign(userId:string,code:string) {
   if(!campaign) throw new ApiError(404,'Invitation not found');
   const [invite]=await tx.select().from(invites).where(eq(invites.codeHash,hash(code)));
   if(!invite||invite.revokedAt||invite.expiresAt<=new Date()) throw new ApiError(410,'Invitation expired or revoked');
+  const [issuer]=await tx.select().from(campaignMembers).where(and(eq(campaignMembers.campaignId,campaign.id),eq(campaignMembers.userId,invite.createdBy ?? ''),eq(campaignMembers.status,'active')));
+  if(!issuer || !campaignPermissions({campaign,membership:issuer}).invite) throw new ApiError(410,'Invitation issuer no longer authorized');
   const [existing]=await tx.select().from(campaignMembers).where(and(eq(campaignMembers.campaignId,campaign.id),eq(campaignMembers.userId,userId)));
   if(existing?.status==='active') return {campaignId:campaign.id};
   if(existing?.status==='removed') throw new ApiError(403,'Removed membership requires owner restoration');
