@@ -10,3 +10,6 @@ export const modeLabel = (mode: string) => (({solo:'Single-player', multiplayer:
 export function roles(member: {userId:string; isDm:boolean; isPlayer:boolean}, ownerId:string) {
   return [member.userId === ownerId && 'Owner', member.isDm && 'DM', member.isPlayer && 'Trainer'].filter(Boolean).join(' · ') || 'Member';
 }
+
+export type CreateCampaignInput = { name: string; description: string; playMode: "solo" | "multiplayer"; experienceType: "encounter" | "adventure"; dmMode: "automated" | "human" | "assisted"; ownerIsPlayer: boolean; settings: import("@/db/schema/campaigns").CampaignSettings };
+export const createCampaign = (input: CreateCampaignInput) => request<CampaignEntry>("/api/campaigns", "POST", input);
