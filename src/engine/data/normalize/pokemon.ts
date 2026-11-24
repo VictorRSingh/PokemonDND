@@ -58,14 +58,14 @@ export function normalizePokemon(raw: unknown, speciesNames: readonly string[]):
     const savingThrows=unique(strings(r.saving_throws).flatMap(s=>{const k=s.toLowerCase();if(k==='none')return [];if(k==='all abilities')return [...ABILITY_KEYS];if(!saves[k])throw new Error('Unknown save '+s);return [saves[k]];}));
     field='moves'; if(!r.moves||typeof r.moves!=='object'||Array.isArray(r.moves))throw new Error('Invalid moves');
     const learnset=Object.entries(r.moves).filter(([key])=>key!=='egg_moves').flatMap(([key,v])=>{const minimumLevel=key==='starting_moves'?baseLevel:number(Number(key),1,20);return unique(strings(v).map(moveId)).map(moveId=>({moveId,minimumLevel}));});
-    field='abilities'; const abilityIds=unique(strings(r.abilities).map(a=>canonicalId(a.split(':')[0])));
+    field='abilities'; const abilityIds=unique(strings(r.abilities).filter(a=>a.toLowerCase()!=='none').map(a=>canonicalId(a.split(':')[0])));
     const hidden=typeof r.hidden_ability==='string'?canonicalId(r.hidden_ability.split(':')[0]):undefined;
     field='evolution'; const evolution=evolutions(r.evolution,speciesNames);
     field='tm'; const tmIds=unique(strings(r.tm).flatMap(t=>{if(t==='EVERY \"TM\"')return Array.from({length:100},(_,i)=>String(i+1).padStart(2,'0'));if(t==='None')return [];if(/^100 (?:10[1-9]|11[0-8])(?: Zygarde Complete)?$/.test(t)||t.startsWith('100 Portions of the material'))return ['100'];if(/^None \d+$/.test(t))return []; if(!/^[\d\s.,]+$/.test(t))throw new Error('Invalid TM '+t);return (t.match(/\d+/g)??[]).map(n=>String(number(Number(n),1,100)).padStart(2,'0'));}));
     field='armor_class';const armorClass=number(r.armor_class,1);field='hit_points';const baseHP=number(r.hit_points,1);
     field='resistances';const resistances=elements(strings(r.resistances));field='vulnerabilities';const vulnerabilities=elements(strings(r.vulnerabilities));field='immunities';const immunities=elements(strings(r.immunities));
     field='skills/senses';const proficientSkills=strings(r.proficient_skills).filter(s=>s.toLowerCase()!=='none');const senses=strings(r.senses).filter(s=>s.toLowerCase()!=='none');
-    return {ok:true,value:{id:canonicalId(name),number:dex,name,size:size as CreatureSize,types:types as [ElementalType,...ElementalType[]],baseLevel,speciesRating,armorClass,baseHP,hitDie,speed,abilityScores,proficientSkills,savingThrows,resistances,vulnerabilities,immunities,senses,abilityIds,hiddenAbilityId:hidden||undefined,learnset,tmIds,evolutions:evolution}};
+    return {ok:true,value:{id:canonicalId(name),number:dex,name,size:size as CreatureSize,types:types as [ElementalType,...ElementalType[]],baseLevel,speciesRating,armorClass,baseHP,hitDie,speed,abilityScores,proficientSkills,savingThrows,resistances,vulnerabilities,immunities,senses,abilityIds,hiddenAbilityId:hidden&&hidden!=='none'?hidden:undefined,learnset,tmIds,evolutions:evolution}};
   } catch(e) {const issue:DataIssue={dataset:'pokemon_master_list',record,field,message:e instanceof Error?e.message:String(e)};return {ok:false,issues:[issue]};}
 }
 export function normalizePokemonDataset(raw: readonly unknown[]) {

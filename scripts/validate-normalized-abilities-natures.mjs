@@ -1,0 +1,29 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const dir=mkdtempSync(join(tmpdir(),'pokemon-normalize-'));
+try {
+  const tsc=require.resolve('typescript/bin/tsc');
+  execFileSync(process.execPath,[tsc,'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--moduleResolution','node','--outDir',dir,'src/engine/data/index.ts'],{stdio:'inherit'});
+  writeFileSync(join(dir,'package.json'),'{"type":"commonjs"}');
+  const {normalizeAbilityDataset,normalizeNatureDataset,normalizeNature}=require(join(dir,'index.js'));
+  const root=resolve(process.argv.slice(2).find(a=>!a.startsWith('--'))??'public/data');
+  const species=JSON.parse(readFileSync(join(root,'pokemon_master_list.json'),'utf8'));
+  const raw=JSON.parse(readFileSync(join(root,'nature_list.json'),'utf8'));
+  const before=JSON.stringify([species,raw]);
+  const a=normalizeAbilityDataset(species),n=normalizeNatureDataset(raw);
+  assert.equal(JSON.stringify([species,raw]),before);
+  assert.equal(new Set(a.abilities.map(x=>x.id)).size,a.abilities.length);
+  assert.ok(!a.abilities.some(x=>x.id==='none'));
+  assert.ok(a.abilities.every(x=>x.implementation.kind==='unsupported'));
+  assert.deepEqual(n.natures.find(x=>x.id==='hardy').abilityScoreModifiers,{dex:-2});
+  assert.equal(n.natures.find(x=>x.id==='nimble').armorClassModifier,1);
+  assert.equal(normalizeNature({name:'Invalid',stats:{str:99}}).ok,false);
+  assert.equal(normalizeNatureDataset([raw[0],raw[0]]).issues.length,1);
+  console.log(JSON.stringify({abilities:a.abilities.length,descriptionConflicts:a.conflicts.length,conflicts:a.conflicts,abilityIssues:a.issues,natures:n.natures.length,natureIssues:n.issues},null,2));
+  if(process.argv.includes('--strict')&&(a.issues.length||n.issues.length||a.conflicts.length))process.exitCode=1;
+} finally {rmSync(dir,{recursive:true,force:true});}
