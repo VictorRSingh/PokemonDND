@@ -5,7 +5,7 @@ import { getProficiencyBonus } from './progression';
 import { battlefieldDistance } from './battle';
 
 /** Pure status queries; paralysis incapacitation requires a turn-specific roll. */
-export function statusRestrictions(p: PokemonCombatant, paralysisBlocked = false) {
+export function statusRestrictions(p: PokemonCombatant, paralysisBlocked = p.paralysisBlocked ?? false) {
  const asleep=p.volatile.some(x=>x.kind==='asleep'), confused=p.volatile.some(x=>x.kind==='confused');
  const incapacitated=asleep||p.nonvolatile?.kind==='frozen'||paralysisBlocked;
  return Object.freeze({incapacitated, restrained:incapacitated, reactions:!incapacitated&&!confused, movementMultiplier:incapacitated?0:confused||p.nonvolatile?.kind==='paralyzed'?0.5:1});

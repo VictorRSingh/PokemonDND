@@ -55,6 +55,9 @@ export interface PokemonCombatant extends CombatantBase {
   readonly trainerId?: CombatantId;
   readonly deployment: 'active' | 'recalled';
   readonly nonvolatile?: StatusEffect<NonvolatileStatus>;
+  readonly paralysisBlocked?: boolean;
+  readonly actionForfeited?: boolean;
+  readonly statusGrace?: Readonly<Partial<Record<NonvolatileStatus | VolatileStatus, number>>>;
   readonly volatile: readonly StatusEffect<VolatileStatus>[];
 }
 export type Combatant = TrainerCombatant | PokemonCombatant;

@@ -1,0 +1,4 @@
+# Status and reaction integration
+Apply over lifecycle integration patch. `advanceBattleTurn` accepts per-combatant manual status faces. `useBattleMove` accepts manualConfusion and manualSleep. `moveWithOpportunity` accepts endpoint, reach map and explicit chosen reactions (empty means decline). Supported reactions are Scratch and Tackle; normal PP and reaction expenditure apply. All changes are immutable and versioned.
+
+Limitations: first-turn paralysis initialization, exact global initiative-round expiration, volatile application/grace API, frozen save proficiency and advantage, trainer-specific action forfeiture, disengage action, path traversal, other melee moves, and full application compilation remain outstanding. Endpoint movement uses caller-supplied reach. This is an incremental patch, not full Phase 5 completion.
