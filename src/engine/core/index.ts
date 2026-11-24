@@ -9,3 +9,4 @@ export * from './move-power';
 export * from './hit-points';
 export * from './nature-loyalty';
 export * from './combat-stats';
+export * from './encounter';

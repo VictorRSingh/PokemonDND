@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createRequire } from 'node:module';
+const dir = mkdtempSync(join(tmpdir(), 'pokemon-dice-'));
+try {
+  const require = createRequire(import.meta.url);
+  const tsc = process.env.ENGINE_TSC || require.resolve('typescript/bin/tsc');
+  execFileSync(process.execPath, [tsc, '--strict', '--skipLibCheck', '--target', 'es2020', '--module', 'commonjs', '--outDir', dir, 'src/engine/core/index.ts'], {stdio:'inherit'});
+  const e = require(join(dir,'core/index.js'));
+  const scores={str:10,dex:14,con:10,int:10,wis:10,cha:10};
+  const base={name:'Test',level:1,abilityScores:scores,armorClass:12,maximumHP:20,currentHP:20,temporaryHP:0,speed:{walking:30}};
+  const trainer={...base,id:'t',sideId:'a',kind:'trainer'};
+  const pokemon=(id,sideId,trainerId)=>({...base,id,sideId,kind:'pokemon',trainerId,deployment:'active',volatile:[],pokemon:{id,speciesId:'charmander',level:1,xp:0,abilityScores:scores,armorClass:12,maximumHP:20,currentHP:20,learnedMoves:[]}});
+  function setup(overrides={}){let s=e.createEncounter('battle','wild',e.createRulesetSnapshot('classic',overrides),42); for(const c of [trainer,pokemon('p','a','t'),pokemon('q','b')]) s=e.registerCombatant(s,c,s.version); return s;}
+  const s=setup({rollMode:'manual'}); assert.throws(()=>e.startEncounter(s,s.version));
+  const started=e.startEncounter(s,s.version,{t:20,q:1}); let b=started.state;
+  assert.equal(b.rngState,s.rngState); assert.deepEqual(b.initiative[0].combatantIds,['t','p']); assert.equal(b.turn.round,1); assert.equal(s.status,'setup');
+  assert.throws(()=>e.spendTurnResource(b,b.version,'q','action'));
+  b=e.spendTurnResource(b,b.version,'p','action'); assert.throws(()=>e.spendTurnResource(b,b.version,'t','action'));
+  b=e.spendTurnResource(b,b.version,'t','bonus-action'); b=e.spendMovement(b,b.version,'p',10); assert.equal(b.turn.movementRemaining.p,20); assert.equal(b.turn.movementRemaining.t,30);
+  b=e.spendReaction(b,b.version,'p'); assert.throws(()=>e.spendReaction(b,b.version,'p')); b=e.endTurn(b,b.version,'t'); assert.equal(b.turn.slotIndex,1); b=e.endTurn(b,b.version,'q'); assert.equal(b.turn.round,2); assert.equal(b.reactionAvailable.p,true); assert.equal(b.turn.resources.actionAvailable,true);
+  assert.throws(()=>e.pauseEncounter(b,b.version-1)); b=e.pauseEncounter(b,b.version); assert.throws(()=>e.endTurn(b,b.version,'t')); b=e.resumeEncounter(b,b.version); b=e.completeEncounter(b,b.version); assert.equal(b.turn,undefined); assert.throws(()=>e.resumeEncounter(b,b.version));
+  const individual=setup({initiative:'individual'}); assert.equal(e.startEncounter(individual,individual.version).state.initiative.length,3); assert.deepEqual(e.startEncounter(individual,individual.version),e.startEncounter(individual,individual.version));
+  const casual=setup({trainerParticipation:false}); assert.equal(e.startEncounter(casual,casual.version).state.initiative.length,2);
+  assert.throws(()=>e.registerCombatant(s,pokemon('extra','a','t'),s.version)); assert.throws(()=>e.registerCombatant(s,trainer,s.version)); assert.ok(Object.isFrozen(started.state.combatants[0].abilityScores));
+  console.log(JSON.stringify({encounter:'passed',initiative:'passed',turns:'passed',lifecycle:'passed',result:'passed'}));
+} finally { rmSync(dir,{recursive:true,force:true}); }
