@@ -38,6 +38,7 @@ export const createCampaignInput = z.object({
 
 // Owner administration.
 export const updateCampaignInput = z.object({
+  status: z.enum(["active", "archived"]).optional(),
   dmMode: z.enum(["automated", "human", "assisted"]).optional(),
   ownerIsPlayer: z.boolean().optional(),
   settings: campaignSettingsInput.partial().optional(),
