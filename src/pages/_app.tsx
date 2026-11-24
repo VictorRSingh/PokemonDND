@@ -22,7 +22,7 @@ function CharacterStorage({ userId }: { userId?: string }) {
 function AppContent({ Component, pageProps, router }: AppProps) {
   const { data: session, status } = useSession();
   const userId = status === "authenticated" ? session?.user?.id : undefined;
-  const inApp = router.pathname === "/app" || router.pathname.startsWith("/dm/");
+  const inApp = router.pathname === "/app" || router.pathname.startsWith("/dm/") || router.pathname === "/campaigns" || router.pathname.startsWith("/campaigns/");
   return (
     <Provider key={userId || "signed-out"}>
       <CharacterStorage userId={userId} />
