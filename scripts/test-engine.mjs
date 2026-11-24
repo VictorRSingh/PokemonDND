@@ -13,7 +13,7 @@ const coreOnly = args[0] === '--core-only';
 const data = resolve(root, coreOnly ? 'public/data' : args[0] ?? 'public/data');
 const core = ['random', 'dice', 'd20', 'rules', 'ability-scores', 'stats', 'encounter'].map(name => [`validate-engine-${name}.mjs`, []]);
 const datasets = ['normalized-pokemon', 'normalized-moves', 'normalized-abilities-natures', 'game-references', 'game-registry'].map(name => [`validate-${name}.mjs`, [data, '--strict']]);
-const suites = coreOnly ? core : [...core, ...datasets];
+const suites = coreOnly ? core : [...core, ...datasets, ['validate-engine-battle.mjs', [data]]];
 const results = [];
 for (const [script, flags] of suites) {
   console.log(`\n=== ${script} ===`);
