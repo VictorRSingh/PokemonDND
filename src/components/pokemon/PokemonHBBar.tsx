@@ -1,74 +1,32 @@
 import {
-  characterTableAtom,
-  selectedCharacterAtom,
+  gameActionAtom, gameBusyAtom,
   selectedPokemonAtom,
 } from "@/atoms/atoms";
 import { Character } from "@/classes/Character";
-import { CharacterTable } from "@/classes/database/CharacterTable";
 import { Pokemon } from "@/classes/Pokemon";
-import { useAtom } from "jotai";
+import { useSetAtom, useAtomValue } from "jotai";
 import React from "react";
 
 const PokemonHBBar = () => {
-  const [selectedPokemon, setSelectedPokemon] = useAtom(selectedPokemonAtom);
-  const [characterTable, setCharacterTable] = useAtom(characterTableAtom);
-  const [selectedCharacter, setSelectedCharacter] = useAtom(
-    selectedCharacterAtom
-  );
+  const selectedPokemon = useAtomValue(selectedPokemonAtom);
+  const run = useSetAtom(gameActionAtom);
+  const busy = useAtomValue(gameBusyAtom);
+  const [draft, setDraft] = React.useState<string | null>(null);
+  React.useEffect(() => setDraft(null), [selectedPokemon?.id]);
 
   const hpPercentage =
     ((selectedPokemon?.current_hit_points as number) /
       selectedPokemon?.hit_points!) *
     100;
 
-    const handleHPChange = (hp: string) => {
-
-      if (!characterTable || !selectedCharacter || !selectedPokemon || !Number.isFinite(Number(hp))) return;
-      if(Number(hp) < 0 || Number(hp) > selectedPokemon?.hit_points!) {
-        return;
-      }
-
-      const updatedPokemon = { ...selectedPokemon, current_hit_points: Number(hp) }; // Update local Pokémon state
-      setSelectedPokemon(updatedPokemon as Pokemon); // Update the atom for live reactivity
-    
-      const characterUpdated = characterTable?.updatePokemon(
-        selectedCharacter?.id as string,
-        selectedPokemon?.id as string,
-        { current_hit_points: Number(hp) }
-      );
-    
-      if (characterUpdated) {
-        // Reinitialize the CharacterTable class with updated records
-        const newCharacterTable = new CharacterTable(characterTable.tableName);
-        newCharacterTable.records = characterTable?.records as Character[]; // Retain the updated records
-        setCharacterTable(newCharacterTable); // Set as the new instance
-    
-        // Update selectedCharacter in the atom
-        setSelectedCharacter((prev) => {
-          if (!prev) return undefined;
-        
-          // Map ownedPokemon to ensure all elements are instances of Pokemon
-          const updatedOwnedPokemon = prev.ownedPokemon.map((pokemon) => {
-            if (pokemon.id === updatedPokemon.id) {
-              // Replace the updated Pokémon with a new instance
-              return new Pokemon({
-                ...pokemon, // Retain existing properties
-                ...updatedPokemon, // Merge updates
-              });
-            }
-        
-            // Rehydrate plain objects into Pokemon instances
-            return pokemon instanceof Pokemon ? pokemon : new Pokemon(pokemon);
-          });
-        
-          // Create a new instance of Character to retain methods
-          const updatedCharacter = new Character(prev.name, updatedOwnedPokemon);
-          updatedCharacter.id = prev.id;
-        
-          return updatedCharacter;
-        });
-      }
-    };
+  const handleHPChange = async (hp: string) => {
+    setDraft(null);
+    if (!selectedPokemon?.id || busy || !hp.trim()) return;
+    const value = Number(hp);
+    if (!Number.isFinite(value) || value < 0 || value > selectedPokemon.hit_points) return;
+    if (value === selectedPokemon.current_hit_points) return;
+    await run({path: `/api/pokemon/${selectedPokemon.id}`, method: "PATCH", body: {current_hit_points: value}});
+  };
 
   return (
     <>
@@ -93,16 +51,17 @@ const PokemonHBBar = () => {
               type="number"
               min={0}
               max={selectedPokemon.hit_points}
-              onChange={(e) => {
-                handleHPChange(e.target.value);
-              }}
-              value={selectedPokemon?.current_hit_points!}
+              disabled={busy}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={() => { if (draft !== null) void handleHPChange(draft); }}
+              onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              value={draft ?? selectedPokemon.current_hit_points ?? selectedPokemon.hit_points}
               className="w-16 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-white"
             ></input>
             / <span>{selectedPokemon.hit_points}</span>
           </div>
           <div className="grid grid-cols-3 gap-1">
-            {[{label: "−1", hp: Math.max(0, (selectedPokemon.current_hit_points ?? selectedPokemon.hit_points) - 1)}, {label: "+1", hp: Math.min(selectedPokemon.hit_points, (selectedPokemon.current_hit_points ?? selectedPokemon.hit_points) + 1)}, {label: "Full", hp: selectedPokemon.hit_points}].map(action => <button key={action.label} type="button" onClick={() => handleHPChange(String(action.hp))} className="rounded bg-slate-800 px-2 py-1 text-sm text-slate-100 hover:bg-slate-700">{action.label}</button>)}
+            {[{label: "−1", hp: Math.max(0, (selectedPokemon.current_hit_points ?? selectedPokemon.hit_points) - 1)}, {label: "+1", hp: Math.min(selectedPokemon.hit_points, (selectedPokemon.current_hit_points ?? selectedPokemon.hit_points) + 1)}, {label: "Full", hp: selectedPokemon.hit_points}].map(action => <button key={action.label} type="button" disabled={busy} onClick={() => handleHPChange(String(action.hp))} className="rounded bg-slate-800 px-2 py-1 text-sm text-slate-100 hover:bg-slate-700">{action.label}</button>)}
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
 import { requireSession } from "@/lib/require-session";
-import { Character } from "@/classes/Character";
+
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { useAtom } from "jotai";
-import { characterTableAtom, selectedCharacterAtom, selectedPokemonAtom } from "@/atoms/atoms";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
+import { characterTableAtom, selectedCharacterAtom, selectedPokemonAtom, gameActionAtom, gameBusyAtom } from "@/atoms/atoms";
 import PokemonGenerator from "@/components/pokemon/PokemonGenerator";
 import PokemonWidget from "@/components/pokemon/PokemonWidget";
 import PokemonDetails from "@/components/pokemon/PokemonDetails";
@@ -11,6 +11,8 @@ import toast from "react-hot-toast";
 
 export default function CharacterPage() {
   const router = useRouter();
+  const run = useSetAtom(gameActionAtom);
+  const busy = useAtomValue(gameBusyAtom);
   const name = router.query.name;
   const [table] = useAtom(characterTableAtom);
   const [character, setCharacter] = useAtom(selectedCharacterAtom);
@@ -30,16 +32,11 @@ export default function CharacterPage() {
   const team = active?.ownedPokemon ?? [];
   const current = team.find(p => p.id === selected?.id);
 
-  function removePokemon(id: string) {
-    if (!active || !table) return;
+  async function removePokemon(id: string) {
+    if (!active || !table || busy) return;
     const pokemon = team.find(p => p.id === id);
     if (!pokemon || !window.confirm(`Remove ${pokemon.given_name || pokemon.name} from this team?`)) return;
-    const updated = table.deletePokemon(active.id, id);
-    if (updated) {
-      setCharacter(Object.assign(new Character(updated.name, updated.ownedPokemon), { id: updated.id }));
-      if (selected?.id === id) setSelected(undefined);
-      toast.success("Pokemon removed from team");
-    }
+    if (await run({path: `/api/pokemon/${id}`, method: "DELETE"})) toast.success("Pokemon removed from team");
   }
 
   return (
@@ -69,7 +66,7 @@ export default function CharacterPage() {
                       <img src={p.image} alt="" className="h-16 w-16 object-contain" />
                       <span className="min-w-0 flex-1"><span className="block truncate font-bold">{p.given_name || p.name}</span><span className="block text-xs text-slate-400">{p.name} · Level {p.current_level ?? p.level}</span><span className="mt-2 block text-xs text-slate-300">HP {hp} / {p.hit_points}</span><span className="mt-1 block h-2 overflow-hidden rounded-full bg-slate-700"><span className={`block h-full rounded-full ${percent > 50 ? 'bg-green-500' : percent > 20 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{width: `${percent}%`}} /></span></span>
                     </button>
-                    <div className="mt-2 flex justify-end"><button type="button" onClick={() => p.id && removePokemon(p.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-slate-800">Remove</button></div>
+                    <div className="mt-2 flex justify-end"><button type="button" disabled={busy} onClick={() => p.id && removePokemon(p.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-slate-800">Remove</button></div>
                   </div>;
                 })}
               </div>

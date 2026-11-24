@@ -10,7 +10,7 @@ export class Pokemon {
     current_hit_points: number | null;
     level: number;
     current_level: number | null;
-    evolution: string;
+    evolution: string | null;
     hit_dice: string;
     speed: string[];
     stats: Record<string, any>;

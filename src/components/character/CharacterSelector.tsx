@@ -1,15 +1,16 @@
-import { characterTableAtom, selectedCharacterAtom } from "@/atoms/atoms";
+import { characterTableAtom, gameActionAtom, gameBusyAtom, selectedCharacterAtom } from "@/atoms/atoms";
 import { Character } from "@/classes/Character";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import { MdDeleteForever } from "react-icons/md";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
-import { CharacterTable } from "@/classes/database/CharacterTable";
 
 const CharacterSelector = () => {
   const router = useRouter();
-  const [characterTable, setCharacterTable] = useAtom(characterTableAtom);
+  const characterTable = useAtomValue(characterTableAtom);
+  const run = useSetAtom(gameActionAtom);
+  const busy = useAtomValue(gameBusyAtom);
   const [selectedCharacter, setSelectedCharacter] = useAtom(
     selectedCharacterAtom
   );
@@ -32,24 +33,9 @@ const CharacterSelector = () => {
     }
   };
   
-  const handleDelete = (characterId: string) => {
-    const updatedCharactersRecords = characterTable?.records.filter(
-      (record) => record.id !== characterId
-    );
-  
-    if (updatedCharactersRecords && updatedCharactersRecords.length !== characterTable?.records.length) {
-      // Create a new CharacterTable with updated records
-      if (!characterTable) return;
-          const updatedTable = new CharacterTable(characterTable.tableName);
-      updatedTable.records = updatedCharactersRecords;
-      updatedTable.saveTableToStorage();
-  
-      setCharacterTable(updatedTable); // Update state with a new instance
-      setSelectedCharacter(undefined);
-      toast.success("Character deleted successfully");
-    } else {
-      toast.error("Failed to delete character");
-    }
+  const handleDelete = async (characterId: string) => {
+    if (busy || !window.confirm("Delete character and all Pokémon?")) return;
+    if (await run({path: `/api/characters/${characterId}`, method: "DELETE"})) toast.success("Character deleted successfully");
   };
 
   return (

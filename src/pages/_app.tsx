@@ -1,8 +1,8 @@
 import SiteHeader from "@/components/layout/SiteHeader";
-import { characterTableAtom } from "@/atoms/atoms";
-import { CharacterTable } from "@/classes/database/CharacterTable";
+import { gameActionAtom, gameErrorAtom, gameBusyAtom } from "@/atoms/atoms";
+
 import "@/styles/globals.css";
-import { Provider, useSetAtom } from "jotai";
+import { Provider, useSetAtom, useAtomValue } from "jotai";
 import type { AppProps } from "next/app";
 import { useEffect } from "react";
 import { SessionProvider, useSession, signIn } from "next-auth/react";
@@ -10,11 +10,13 @@ import { Toaster } from "react-hot-toast";
 import Head from "next/head";
 
 function CharacterStorage({ userId }: { userId?: string }) {
-  const setTable = useSetAtom(characterTableAtom);
+  const run = useSetAtom(gameActionAtom);
+  const error = useAtomValue(gameErrorAtom);
+  const busy = useAtomValue(gameBusyAtom);
   useEffect(() => {
-    if (userId) setTable(new CharacterTable(`CharacterTable:${userId}`));
-  }, [userId, setTable]);
-  return null;
+    if (userId) void run();
+  }, [userId, run]);
+  return error ? <div role="alert" className="bg-red-950 p-4 text-white">{error} <button disabled={busy} onClick={() => void run()} className="underline">Retry loading</button></div> : null;
 }
 
 function AppContent({ Component, pageProps, router }: AppProps) {

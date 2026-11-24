@@ -1,16 +1,18 @@
 import { requireSession } from "@/lib/require-session";
-import { characterTableAtom, selectedCharacterAtom } from "@/atoms/atoms";
+import { characterTableAtom, selectedCharacterAtom, gameActionAtom, gameBusyAtom } from "@/atoms/atoms";
 import { Character } from "@/classes/Character";
-import { CharacterTable } from "@/classes/database/CharacterTable";
+
 import Modal from "@/components/Modal";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
 export default function App() {
   const router = useRouter();
-  const [table, setTable] = useAtom(characterTableAtom);
+  const table = useAtomValue(characterTableAtom);
+  const run = useSetAtom(gameActionAtom);
+  const busy = useAtomValue(gameBusyAtom);
   const [selected, setSelected] = useAtom(selectedCharacterAtom);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -20,16 +22,8 @@ export default function App() {
   const total = characters.reduce((sum, c) => sum + c.ownedPokemon.length, 0);
   const visible = characters.filter(c => c.name.toLowerCase().includes(search.trim().toLowerCase()));
 
-  function save(records: Character[]) {
-    if (!table) return;
-    const next = new CharacterTable(table.tableName);
-    next.records = records;
-    next.saveTableToStorage();
-    setTable(next);
-  }
-
-  function create() {
-    if (!table) return;
+  async function create() {
+    if (!table || busy) return;
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > 15 || /[/?#]/.test(trimmed)) {
       toast.error("Enter a valid character name (1–15 characters, no /, ? or #).");
@@ -39,15 +33,15 @@ export default function App() {
       toast.error("Character with this name already exists");
       return;
     }
-    save([...characters, new Character(trimmed)]);
+    if (!await run({path: "/api/characters", method: "POST", body: {name: trimmed}})) return;
     setCreating(false);
     setName("");
     toast.success("Character created successfully");
   }
 
-  function remove() {
-    if (!table || !deleting) return;
-    save(characters.filter(c => c.id !== deleting.id));
+  async function remove() {
+    if (!table || !deleting || busy) return;
+    if (!await run({path: `/api/characters/${deleting.id}`, method: "DELETE"})) return;
     if (selected?.id === deleting.id) setSelected(undefined);
     setDeleting(null);
     toast.success("Character deleted successfully");
@@ -105,14 +99,14 @@ export default function App() {
           </div>
         )}
       </section>
-      <p className="mt-8 text-xs text-slate-500">Characters are saved in this browser under your account. Cloud synchronization is not enabled yet.</p>
-      <Modal modal_id="create_character" modalTitle="Create character" showModal={creating} setShowModal={setCreating} actionButton={<button type="submit" form="character-form" disabled={!name.trim()} className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-50">Create</button>}>
+      <p className="mt-8 text-xs text-slate-500">Characters and Pokémon are saved to your account in PostgreSQL.</p>
+      <Modal modal_id="create_character" modalTitle="Create character" showModal={creating} setShowModal={setCreating} actionButton={<button type="submit" form="character-form" disabled={busy || !name.trim()} className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-50">Create</button>}>
         <form id="character-form" onSubmit={e => { e.preventDefault(); create(); }}>
           <label htmlFor="character-name" className="font-semibold">Character name</label>
           <input id="character-name" autoFocus required maxLength={15} value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded border border-slate-400 px-3 py-2" />
         </form>
       </Modal>
-      <Modal modal_id="delete_character" modalTitle="Delete character?" showModal={!!deleting} setShowModal={v => { if (!v) setDeleting(null); }} actionButton={<button onClick={remove} className="rounded bg-red-600 px-4 py-2 text-white">Delete permanently</button>}>
+      <Modal modal_id="delete_character" modalTitle="Delete character?" showModal={!!deleting} setShowModal={v => { if (!v) setDeleting(null); }} actionButton={<button onClick={remove} disabled={busy} className="rounded bg-red-600 px-4 py-2 text-white">Delete permanently</button>}>
         <p>Delete {deleting?.name} and all of their owned Pokémon? This cannot be undone.</p>
       </Modal>
     </div>
