@@ -24,6 +24,14 @@ try {
   assert.equal(n.natures.find(x=>x.id==='nimble').armorClassModifier,1);
   assert.equal(normalizeNature({name:'Invalid',stats:{str:99}}).ok,false);
   assert.equal(normalizeNatureDataset([raw[0],raw[0]]).issues.length,1);
-  console.log(JSON.stringify({abilities:a.abilities.length,descriptionConflicts:a.conflicts.length,conflicts:a.conflicts,abilityIssues:a.issues,natures:n.natures.length,natureIssues:n.issues},null,2));
+  const byId=new Map(a.abilities.map(x=>[x.id,x]));
+  assert.equal(byId.get('chlorophyll').reconciliation,'handbook');
+  assert.match(byId.get('chlorophyll').description,/harsh sunlight/);
+  assert.equal(byId.get('power-construct').reconciliation,'species-specific');
+  assert.match(byId.get('power-construct').speciesDescriptions['zygarde-10-percent-forme'],/50% Forme/);
+  assert.match(byId.get('power-construct').speciesDescriptions['zygarde-50-percent-forme'],/Complete Forme/);
+  assert.equal(byId.get('variable-size').reconciliation,'species-specific');
+  assert.equal(normalizeAbilityDataset([{name:'A',abilities:['Example: One']},{name:'B',abilities:['Example: Two']}]).conflicts[0],'example');
+  console.log(JSON.stringify({handbookResolved:a.abilities.filter(x=>x.reconciliation==='handbook').length,speciesSpecific:a.abilities.filter(x=>x.reconciliation==='species-specific').length,abilities:a.abilities.length,descriptionConflicts:a.conflicts.length,conflicts:a.conflicts,abilityIssues:a.issues,natures:n.natures.length,natureIssues:n.issues},null,2));
   if(process.argv.includes('--strict')&&(a.issues.length||n.issues.length||a.conflicts.length))process.exitCode=1;
 } finally {rmSync(dir,{recursive:true,force:true});}
