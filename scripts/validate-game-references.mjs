@@ -17,6 +17,8 @@ try {
   const before=JSON.stringify(raw);
   const result=validateGameReferences(...raw);
   assert.equal(JSON.stringify(raw),before);
+  assert.equal(result.unavailableMoveReferences.length,2);
+  assert.ok(result.unavailableMoveReferences.every(x=>x.field==='learnset'));
   assert.equal(normalizeAbilityDataset([{name:'test',abilities:[],hidden_ability:[]}]).issues.length,0);
   assert.equal(normalizeAbilityDataset([{name:'test',abilities:[],hidden_ability:['bad']}]).issues.length,1);
   console.log(JSON.stringify(result,null,2));

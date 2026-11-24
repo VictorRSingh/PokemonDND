@@ -4,3 +4,4 @@ export * from './normalize/moves';
 export * from './normalize/abilities';
 export * from './normalize/natures';
 export * from './validate-references';
+export * from './unavailable-moves';

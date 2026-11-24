@@ -10,7 +10,7 @@ try {
   const tsc=require.resolve('typescript/bin/tsc');
   execFileSync(process.execPath,[tsc,'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--moduleResolution','node','--outDir',dir,'src/engine/data/index.ts'],{stdio:'inherit'});
   writeFileSync(join(dir,'package.json'),'{"type":"commonjs"}');
-  const {normalizeMoveDataset,normalizeMove,moveId}=require(join(dir,'index.js'));
+  const {normalizeMoveDataset,normalizeMove,moveId,unavailableMoves}=require(join(dir,'index.js'));
   const raw=JSON.parse(readFileSync(resolve(process.argv.slice(2).find(a=>!a.startsWith('--'))??'public/data','move_list.json'),'utf8'));
   const before=JSON.stringify(raw);const result=normalizeMoveDataset(raw);
   assert.equal(JSON.stringify(raw),before);assert.equal(result.moves.length+result.issues.length,raw.length);
@@ -24,6 +24,6 @@ try {
   assert.equal(normalizeMove({...raw[0],pp:'-1'}).ok,false);
   assert.equal(normalizeMoveDataset([raw[0],raw[0]]).issues.length,1);
   assert.ok(result.moves.every(m=>m.implementation.kind==='unsupported'));
-  console.log(JSON.stringify({input:raw.length,normalized:result.moves.length,quarantined:result.issues.length,unsupported:result.moves.filter(m=>m.implementation.kind==='unsupported').length,missingReferencedMoves:['Mind Blown','Plasma Fists'].filter(n=>!get(n)),issues:result.issues},null,2));
+  console.log(JSON.stringify({input:raw.length,normalized:result.moves.length,quarantined:result.issues.length,unsupported:result.moves.filter(m=>m.implementation.kind==='unsupported').length,knownUnavailableMoves:unavailableMoves.filter(m=>!get(m.name)).map(m=>m.name),issues:result.issues},null,2));
   if(process.argv.includes('--strict')&&result.issues.length)process.exitCode=1;
 } finally {rmSync(dir,{recursive:true,force:true});}

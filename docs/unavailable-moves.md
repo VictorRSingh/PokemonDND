@@ -1,0 +1,3 @@
+# Known unavailable moves
+
+The Monster Manual lists Mind Blown for Blacephalon and Plasma Fists for Zeraora at level 18. No mechanical definition was located in the supplied Player Handbook. These entries are registered separately from normalized move definitions, with no fabricated PP, type, damage or timing. Only the exact species, move and minimum level are recognized by cross-reference validation. Other missing references remain errors. A real normalized definition takes precedence if supplied later. The future combat registry must not treat these entries as executable; manual resolution requires authorized DM input. Five unresolved TM tokens still fail strict cross-reference validation. Raw data remains unchanged.
