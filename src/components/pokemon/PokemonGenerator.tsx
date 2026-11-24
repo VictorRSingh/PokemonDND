@@ -1,9 +1,9 @@
 import {
-  characterTableAtom,
+  gameActionAtom, gameBusyAtom,
   pokemonListAtom,
   selectedCharacterAtom,
 } from "@/atoms/atoms";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import React, { useEffect, useState } from "react";
 import Modal from "../Modal";
 import {
@@ -12,13 +12,12 @@ import {
 } from "@/functions/PokemonHelperFunctions";
 import { Pokemon } from "@/classes/Pokemon";
 import { FaChevronCircleDown, FaChevronCircleUp } from "react-icons/fa";
-import { Character } from "@/classes/Character";
+
 
 const PokemonGenerator = () => {
-  const [characterTable, setCharacterTable] = useAtom(characterTableAtom);
-  const [selectedCharacter, setSelectedCharacter] = useAtom(
-    selectedCharacterAtom
-  );
+  const run = useSetAtom(gameActionAtom);
+  const busy = useAtomValue(gameBusyAtom);
+  const selectedCharacter = useAtomValue(selectedCharacterAtom);
   const [pokemonList, setPokemonList] = useAtom(pokemonListAtom);
   const [showAddPokemonModal, setShowAddPokemonModal] =
     useState<boolean>(false);
@@ -54,20 +53,11 @@ const PokemonGenerator = () => {
     }
   }, [selectedPokemon]);
 
-  const handleCreate = () => {
-    console.log(selectedCharacter);
-    if (selectedPokemon && pokemonInput) {
-      const createdPokemon = generatePokemon(selectedPokemon, pokemonInput);
-
-      if (createdPokemon) {
-        selectedCharacter?.ownedPokemon.push(createdPokemon);
-        characterTable?.update(selectedCharacter?.id as string, {
-          ownedPokemon: selectedCharacter?.ownedPokemon,
-        });
-      }
-
-      setSelectedCharacter(characterTable?.getExistingCharacter(selectedCharacter?.id as string));
-    }
+  const handleCreate = async () => {
+    if (!selectedPokemon || !selectedCharacter || busy) return;
+    const created = generatePokemon(selectedPokemon, pokemonInput);
+    if (!created) return;
+    if (!await run({path: `/api/characters/${selectedCharacter.id}/pokemon`, method: "POST", body: created})) return;
     setShowAddPokemonModal(false);
     setSelectedPokemon(undefined);
     setPokemonInput({
@@ -96,7 +86,7 @@ const PokemonGenerator = () => {
             actionButton={
               <button
                 className="bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold py-2 px-4 rounded-lg select-none"
-                onClick={handleCreate}
+                disabled={busy} onClick={handleCreate}
               >
                 Create
               </button>

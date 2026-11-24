@@ -8,6 +8,13 @@
       "when": 1795544199735,
       "tag": "0000_tired_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795545421301,
+      "tag": "0001_clean_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

@@ -1,37 +1,22 @@
-import { characterTableAtom } from "@/atoms/atoms";
-import { CharacterTable } from "@/classes/database/CharacterTable";
-import { useAtom } from "jotai";
+import { characterTableAtom, gameActionAtom, gameBusyAtom } from "@/atoms/atoms";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import React, { useEffect, useState } from "react";
 import Modal from "../Modal";
 import { Character } from "@/classes/Character";
 import toast from "react-hot-toast";
 
 const CharacterGenerator = () => {
-  const [characterTable, setCharacterTable] = useAtom(characterTableAtom);
+  const characterTable = useAtomValue(characterTableAtom);
+  const run = useSetAtom(gameActionAtom);
+  const busy = useAtomValue(gameBusyAtom);
   const [showAddCharactermodal, setShowAddCharacterModal] =
     useState<boolean>(false);
 
     const [name, setName] = useState<string>("");
 
-    const handleCreate = () => {
-      const newCharacter = new Character(name);
-    
-      if (newCharacter) {
-        if (!characterTable?.exists(newCharacter.name)) {
-          // Create a new CharacterTable with updated records
-          if (!characterTable) return;
-          const updatedTable = new CharacterTable(characterTable.tableName);
-          updatedTable.records = [...(characterTable?.records || []), newCharacter];
-          updatedTable.saveTableToStorage();
-    
-          setCharacterTable(updatedTable); // Update state with a new instance
-          setShowAddCharacterModal(false);
-          toast.success("Character created successfully");
-          return;
-        }
-      }
-    
-      toast.error("Character with this name already exists");
+    const handleCreate = async () => {
+      if (busy || !name.trim()) return;
+      if (await run({path: "/api/characters", method: "POST", body: {name: name.trim()}})) { setShowAddCharacterModal(false); toast.success("Character created successfully"); }
     };
 
     useEffect(() => {
