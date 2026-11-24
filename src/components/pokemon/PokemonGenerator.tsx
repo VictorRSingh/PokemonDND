@@ -79,23 +79,23 @@ const PokemonGenerator = () => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-y-2 w-full">
+    <div className="flex flex-col items-center gap-y-2">
       <button
-        className="px-2 py-1 bg-green-500 rounded"
+        className="rounded-lg bg-yellow-400 px-4 py-2 font-bold text-slate-950 hover:bg-yellow-300"
         onClick={() => setShowAddPokemonModal(!showAddPokemonModal)}
       >
-        Create Pokemon
+        Create Pokémon
       </button>
       {showAddPokemonModal && (
         <div className="">
           <Modal
             showModal={showAddPokemonModal}
             setShowModal={setShowAddPokemonModal}
-            modalTitle="Create Pokemon"
+            modalTitle="Create Pokémon"
             modal_id="create_pokemon"
             actionButton={
               <button
-                className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded select-none"
+                className="bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold py-2 px-4 rounded-lg select-none"
                 onClick={handleCreate}
               >
                 Create
@@ -105,19 +105,19 @@ const PokemonGenerator = () => {
             <>
               {!selectedPokemon ? (
                 <div className="flex flex-col gap-y-2">
-                  <div className="grid grid-cols-3 md:grid-cols-6 border max-h-[360px] overflow-y-auto p-2 gap-1">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 max-h-[360px] overflow-y-auto p-1 gap-2">
                     {pokemonList.map((pokemon: Pokemon) => (
-                      <label
-                        htmlFor=""
-                        className="flex flex-col col-span-1 border rounded-lg shadow-lg"
+                      <button
+                        type="button"
+                        className="flex flex-col items-center rounded-lg border border-slate-300 bg-slate-50 p-2 hover:border-amber-500 hover:bg-amber-50"
                         onClick={() => setSelectedPokemon(pokemon)}
                         key={pokemon.name}
                       >
-                        <img src={pokemon.image} />
-                        <p className="text-[10px] text-center">
+                        <img src={pokemon.image} alt="" className="h-16 w-16 object-contain" />
+                        <p className="text-xs font-medium text-center break-words">
                           {pokemon.name}
                         </p>
-                      </label>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -151,7 +151,7 @@ const PokemonGenerator = () => {
                         </h2>
                         <input
                           type="text"
-                          className="border w-full rounded px-2 py-1 text-black"
+                          className="border border-slate-300 w-full rounded-lg px-3 py-2 text-black"
                           value={pokemonInput.givenName}
                           onChange={(e) =>
                             updatePokemonInput("givenName", e.target.value)
@@ -159,7 +159,7 @@ const PokemonGenerator = () => {
                           minLength={1}
                           maxLength={15}
                         />
-                        <p className="text-end w-full text-xs text-gray-300">
+                        <p className="text-end w-full text-xs text-slate-500">
                           {pokemonInput.givenName.length}/15
                         </p>
                       </label>
@@ -174,7 +174,7 @@ const PokemonGenerator = () => {
                         <div className="flex gap-x-2">
                           <input
                             type="number"
-                            className="border w-10 text-center text-xl"
+                            className="border border-slate-300 rounded-lg w-16 text-center text-xl"
                             value={pokemonInput.desiredLevel}
                             disabled
                           />
@@ -220,7 +220,7 @@ const PokemonGenerator = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {pokemonInput.selectedMoves.map((move) => (
                             <p
-                              className="col-span-1 px-1 cursor-pointer select-none bg-red-300 hover:bg-red-500 hover:text-white rounded flex items-center justify-center text-center min-h-14 min-w-20 text-xs"
+                              className="col-span-1 px-1 cursor-pointer select-none bg-red-100 text-red-800 hover:bg-red-200 rounded flex items-center justify-center text-center min-h-14 min-w-20 text-xs"
                               onClick={() => {
                                 updatePokemonInput(
                                   "selectedMoves",
@@ -268,7 +268,7 @@ const PokemonGenerator = () => {
                                 )
                                 .map((move) => (
                                   <p
-                                    className="col-span-1 px-1 cursor-pointer select-none bg-green-300 hover:bg-green-500 hover:text-white rounded flex items-center justify-center text-center min-h-14 min-w-20 text-xs"
+                                    className="col-span-1 px-1 cursor-pointer select-none bg-emerald-100 text-emerald-900 hover:bg-emerald-200 rounded flex items-center justify-center text-center min-h-14 min-w-20 text-xs"
                                     onClick={() => {
                                       setPokemonInput((prev) => {
                                         if (prev.selectedMoves.length < 4) {
@@ -328,9 +328,9 @@ const PokemonGenerator = () => {
 
                             return (
                               <div
-                                className={`border rounded p-2 cursor-pointer hover:bg-green-500 hover:text-white ${
+                                className={`border border-slate-300 rounded-lg p-3 cursor-pointer hover:bg-emerald-100 ${
                                   pokemonInput.selectedAbility === ability &&
-                                  `bg-green-300`
+                                  `bg-emerald-100 border-emerald-500`
                                 }`}
                                 onClick={() =>
                                   updatePokemonInput("selectedAbility", ability)

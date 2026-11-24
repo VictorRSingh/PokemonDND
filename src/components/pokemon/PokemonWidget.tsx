@@ -6,7 +6,7 @@ import Modal from "../Modal";
 import { fetchAllMoves } from "@/functions/PokemonHelperFunctions";
 
 const PokemonWidget = () => {
-  const [selectedPokemon, setSelectedPokemon] = useAtom(selectedPokemonAtom);
+  const [selectedPokemon] = useAtom(selectedPokemonAtom);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedMove, setSelectedMove] = useState<string>();
   const [selectedMoveDetails, setSelectedMoveDetails] = useState<any>({});
@@ -18,7 +18,7 @@ const PokemonWidget = () => {
     if (details) {
       setSelectedMoveDetails(details);
     }
-  }, [selectedMove]);
+  }, [selectedMove, moveList]);
 
   useEffect(() => {
     const fetchMoves = async () => {
@@ -34,12 +34,12 @@ const PokemonWidget = () => {
       {selectedPokemon && (
         <>
           <div className="flex flex-col items-center gap-y-2">
-            <div className="border-4 p-2 rounded-lg border-green-300">
+            <div className="w-full rounded-xl border border-slate-700 bg-slate-950 p-4">
               <p className="text-center">
                 Level: {selectedPokemon.current_level}
               </p>
               <div className="relative">
-                <img src={selectedPokemon.image} width={70} />
+                <img src={selectedPokemon.image} width={112} alt={selectedPokemon.name} className="mx-auto" />
                 {(selectedPokemon.current_hit_points as number) <= 0 && (
                   <div className="absolute top-[30%] left-[30%]">
                     <p className="text-5xl text-red-500">X</p>
@@ -53,23 +53,23 @@ const PokemonWidget = () => {
             <PokemonHBBar />
           </div>
 
-          <div className="h-28 overflow-y-auto md:h-full">
+          <div className="space-y-4">
             {/* Abilities */}
-            <div className="flex justify-between md:flex-col gap-6 my-6">
+            <div className="flex flex-col gap-2 my-4">
               {selectedPokemon.selected_ability && (
                 <div className="flex justify-center">
                   <button
-                    className="px-4 py-1 w-full rounded bg-orange-500 font-semibold hover:bg-orange-600"
+                    className="px-4 py-2 w-full rounded-lg border border-amber-500/40 bg-slate-800 text-amber-200 font-semibold hover:bg-slate-700"
                     onClick={() => setActiveModal("ability")}
                   >
                     Ability
                   </button>
                 </div>
               )}
-              {selectedPokemon.hidden_ability.length > 0 && (
+              {!!selectedPokemon.hidden_ability?.length && (
                 <div className="flex justify-center">
                   <button
-                    className="px-4 py-1 w-full rounded bg-orange-500 font-semibold hover:bg-orange-600"
+                    className="px-4 py-2 w-full rounded-lg border border-amber-500/40 bg-slate-800 text-amber-200 font-semibold hover:bg-slate-700"
                     onClick={() => setActiveModal("hiddenAbility")}
                   >
                     Hidden Ability
@@ -80,17 +80,18 @@ const PokemonWidget = () => {
 
             {/* Moves */}
 
-            <div className="grid grid-cols-1 gap-6 my-6">
+            <div className="grid grid-cols-1 gap-2 my-4">
               {selectedPokemon.selected_moves?.map((move) => (
-                <div className="col-span-1 md:col-span-1">
+                <div key={move} className="col-span-1">
                   <button
-                    className="font-bold px-4 py-2 bg-purple-500 rounded cursor-pointer hover:bg-purple-600 w-full"
+                    className="font-semibold px-4 py-3 bg-slate-800 border border-slate-700 text-violet-200 rounded-lg hover:border-violet-400 w-full"
                     onClick={() => {
+                      setSelectedMoveDetails(moveList?.find((entry: any) => entry.name === move) || {});
                       setSelectedMove(move);
                       setActiveModal("moveDetails");
                     }}
                   >
-                    <h1>{move}</h1>
+                    <span>{move}</span>
                   </button>
                 </div>
               ))}
@@ -126,7 +127,7 @@ const PokemonWidget = () => {
               modal_id="move_details"
               modalTitle={selectedMove as string}
             >
-              <div className="grid grid-cols-2">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-1 flex flex-col">
                   <h1 className="font-bold">Range</h1>
                   <p>{selectedMoveDetails.range}</p>
