@@ -36,8 +36,11 @@ export const createCampaignInput = z.object({
   }
 });
 
-// Mode, membership and gameplay settings changes are deferred to Phase 4.8.
+// Owner administration.
 export const updateCampaignInput = z.object({
+  dmMode: z.enum(["automated", "human", "assisted"]).optional(),
+  ownerIsPlayer: z.boolean().optional(),
+  settings: campaignSettingsInput.partial().optional(),
   name: z.string().trim().min(1).max(100).optional(),
   description: z.string().trim().max(2000).optional(),
 }).strict().refine(input => Object.keys(input).length > 0, "Provide at least one field");
