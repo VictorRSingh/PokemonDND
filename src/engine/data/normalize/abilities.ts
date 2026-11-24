@@ -15,7 +15,7 @@ export function normalizeAbilityDataset(raw: readonly unknown[]) {
     const record = String(r?.name ?? 'unknown');
     const add = (value:unknown, hidden:boolean) => {
       if (typeof value === 'string' && (!value.trim() || value.trim().toLowerCase()==='none')) return;
-      if (hidden && value == null) return;
+      if (hidden && (value == null || (Array.isArray(value) && value.length === 0))) return;
       const match = typeof value === 'string' ? /^([^:]+):\s*([\s\S]+)$/.exec(value.trim()) : null;
       if (!match || !match[2].trim() || !canonicalId(match[1])) { issues.push({dataset:'pokemon_master_list',record,field:hidden?'hidden_ability':'abilities',message:'Invalid ability reference'}); return; }
       const name=match[1].trim(), id=canonicalId(name);

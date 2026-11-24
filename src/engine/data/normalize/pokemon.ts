@@ -13,6 +13,7 @@ const number = (value: unknown, min: number, max = Infinity): number => { if (ty
 
 /** Source-verified corrections, scoped to the exact original record. */
 function corrected(raw: Record<string, unknown>): Record<string, unknown> {
+  if (['Ho-oh','Shaymin Land'].includes(String(raw.name))) return {...raw,tm:strings(raw.tm).filter(t=>t!=='© Game Freak'&&t!=='or © Nintendo Company Inc.')};
   if (raw.name === 'Alolan Muk' && Number(raw.number) === 89) return {...raw, hit_dice:'d12', tm: strings(raw.tm).map(t=>t==='100 10'?'100':t)};
   if (raw.name === 'Forme' && Number(raw.number) === 718) return {...raw,name:'Zygarde Complete Forme'};
   if (raw.name === '"Type": Null' && Number(raw.number) === 772) return {...raw,name:'Type: Null',type:['Normal'], evolution:'Type: Null can evolve into Silvally at level 16 and above if its Loyalty is +2 or higher. When it evolves, its health increases by double its level, and it gains 11 points to add to its ability scores (max 20).'};
