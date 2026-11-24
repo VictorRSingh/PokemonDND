@@ -1,0 +1,2 @@
+# D20 checks
+Use rollD20(modifier, random, sources, mode) or recordManualD20(modifier, rolls, sources). Sources are descriptive strings. Any opposing sources cancel regardless of count. Ties select the first die. The modifier is applied once to the selected natural roll. Results are immutable. Natural 1/20 are recorded, not interpreted as automatic outcomes; attack and saving throw rules will do that separately. Manual input authorization and source eligibility are caller responsibilities.
