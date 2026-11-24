@@ -1,0 +1,6 @@
+# Phase 5.3.1 — Core engine contracts
+
+Pure TypeScript, no runtime dependencies. Import from `src/engine/core`.
+The contracts use the canonical data types and distinguish encounter state from persistent Pokémon records. During encounter initialization, copy instance stats into the combatant snapshot; the encounter HP is authoritative during combat, and the embedded Pokémon is the entry snapshot (not a second mutable HP source). Persistence mapping is deferred.
+
+Shared initiative slots support multiple combatants with shared action/bonus resources; movement and reactions are tracked separately. Individual initiative uses one combatant per slot. Rules are immutable by contract, not runtime-frozen yet. Snapshot version 1 covers initial combat settings, not the full future campaign settings schema. RNG state is an opaque serialized string until 5.3.2. Commands include expected state version and an ID for later concurrency and idempotency enforcement. Authorization, runtime validation, event application, status recovery, manual dice authorization, concentration, reaction windows, undo and persistence are not implemented by these types. No combat execution is enabled. One campaign character per member remains unchanged.
