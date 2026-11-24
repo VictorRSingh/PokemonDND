@@ -12,3 +12,4 @@ export * from './combat-stats';
 export * from './encounter';
 export * from './resolution';
 export * from './battle';
+export * from './battle-completion';
