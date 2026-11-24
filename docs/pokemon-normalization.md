@@ -1,0 +1,7 @@
+# Phase 5.2.3 — Species normalization
+
+Raw data remains unchanged. The pure normalizer returns canonical species and quarantined records; it is not connected to the application or a production registry. Corrections checked against the supplied Monster Manual: Alolan Muk d12 and TM 100, Type: Null Normal/Medium and level 16 + loyalty 2 evolution, Zygarde Complete Forme. Shedinja retains printed base HP 6; Paper Thin is a special rule that must enforce maximum HP 1 at runtime. No combat behavior is implemented here.
+
+Starting moves use the species base level; learnset references are not yet checked against the move registry. Egg moves and form-change descriptions remain in raw data for later phases. Complex evolution requirements are manual, retaining original text; target matching and branch-specific ASI must be reviewed in 5.2.6. Ability IDs are provisional. TM punctuation and obvious page/footer artifacts are normalized; seven records with unresolved TM tokens are quarantined rather than guessing. Review TM corrections and all cross-references before production use. Mew's every-TM marker expands to 01–100. No database changes.
+
+Run `node scripts/validate-normalized-pokemon.mjs` from the project root. Optional directory argument overrides public/data. `--strict` returns 1 for quarantined records. Expected for supplied dataset: 856 input, 849 normalized, 7 quarantined. Run `npx tsc --noEmit` and legacy audit separately.
