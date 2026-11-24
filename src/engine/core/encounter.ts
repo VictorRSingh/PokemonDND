@@ -59,7 +59,7 @@ export function spendMovement(state:EncounterState,version:number,actorId:string
   requireState(state,'active',version); actorInTurn(state,actorId); const turn=state.turn!; const remaining=turn.movementRemaining[actorId]??0; if(!Number.isSafeInteger(feet)||feet<=0||feet>remaining) throw new Error('Invalid movement expenditure'); return update(state,{turn:{...turn,movementRemaining:{...turn.movementRemaining,[actorId]:remaining-feet}}});
 }
 export function endTurn(state:EncounterState,version:number,actorId:string):EncounterState {
-  requireState(state,'active',version); actorInTurn(state,actorId); const turn=state.turn!; const count=state.initiative.length;
+  requireState(state,'active',version); const turn=state.turn!; if(!state.initiative[turn.slotIndex].combatantIds.includes(actorId))throw new Error('Actor is not in current turn'); const count=state.initiative.length;
   for(let offset=1;offset<=count;offset++){const absolute=turn.slotIndex+offset,index=absolute%count; const slot=state.initiative[index]; const members=state.combatants.filter(c=>slot.combatantIds.includes(c.id)&&eligible(c,state)); if(!members.length) continue; const reactions={...state.reactionAvailable}; for(const c of members) reactions[c.id]=state.rules.reactions; return update(state,{turn:makeTurn(state,index,turn.round+Math.floor(absolute/count)),reactionAvailable:reactions});} throw new Error('No eligible turn remains');
 }
 export function pauseEncounter(state:EncounterState,version:number):EncounterState {requireState(state,'active',version);return update(state,{status:'paused'});}
