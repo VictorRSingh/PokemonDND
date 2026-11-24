@@ -4,3 +4,8 @@ export * from './dice';
 export * from './d20';
 export * from './rules';
 export * from './ability-scores';
+export * from './progression';
+export * from './move-power';
+export * from './hit-points';
+export * from './nature-loyalty';
+export * from './combat-stats';
