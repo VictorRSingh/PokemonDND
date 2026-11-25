@@ -24,5 +24,14 @@ function initialStatus(kind, mode='manual', hp=20){let state=e.createEncounter('
 const initial=initialStatus('paralyzed');assert.throws(()=>e.startEncounter(initial,initial.version,{a:20,b:1}),/Manual status roll required/);const first=e.startEncounter(initial,initial.version,{a:20,b:1},{a:{paralysis:1}}).state;assert.equal(first.combatants[0].paralysisBlocked,true);assert.equal(first.version,initial.version+1);assert.equal(initial.combatants[0].paralysisBlocked,false);assert.equal(e.startEncounter(initial,initial.version,{a:20,b:1},{a:{paralysis:4}}).state.combatants[0].paralysisBlocked,false);
 const burn=initialStatus('burned');assert.equal(e.startEncounter(burn,burn.version,{a:20,b:1}).state.combatants[0].currentHP,17);const lethal=initialStatus('burned','manual',1);const ended=e.startEncounter(lethal,lethal.version,{a:20,b:1}).state;assert.equal(ended.status,'completed');assert.equal(ended.version,lethal.version+1);
 for(const mode of ['automatic','digital']){const auto=initialStatus('paralyzed',mode);assert.deepEqual(e.startEncounter(auto,auto.version),e.startEncounter(auto,auto.version));}
+// Grace and duration regression: same-round application does not consume a duration.
+const fresh=e.applyVolatile(a,'confused','b',1);assert.equal(fresh.volatile[0].remainingRounds,3);
+assert.equal(e.applyVolatile(fresh,'confused','b',1),fresh);
+const timed={...before,combatants:before.combatants.map(c=>c.id==='a'?fresh:c)};
+let clock=e.advanceBattleTurn(timed,timed.version,'a');assert.equal(clock.combatants[0].volatile[0].remainingRounds,3);
+for(let i=0;i<3;i++){clock=e.advanceBattleTurn(clock,clock.version,'b');clock=e.advanceBattleTurn(clock,clock.version,'a');if(i<2)assert.equal(clock.combatants[0].volatile[0].remainingRounds,2-i);}
+assert.equal(clock.combatants[0].volatile.length,0);assert.equal(clock.combatants[0].statusGrace.confused,1);assert.equal(e.applyVolatile(clock.combatants[0],'confused','b',4),clock.combatants[0]);
+clock=e.advanceBattleTurn(clock,clock.version,'b');clock=e.advanceBattleTurn(clock,clock.version,'a');assert.equal(clock.combatants[0].statusGrace.confused,undefined);assert.equal(e.applyVolatile(clock.combatants[0],'confused','b',5).volatile.length,1);
+const cleared=e.useBattleMove(confusedState,confusedState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualConfusion:16,manualAttack:[1]}).state;assert.equal(cleared.combatants[0].statusGrace.confused,2);const afterClear=e.advanceBattleTurn(cleared,cleared.version,'a');assert.equal(afterClear.combatants[0].statusGrace.confused,1);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}

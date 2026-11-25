@@ -1,0 +1,2 @@
+# Phase 5.9.2
+Volatile sleep/confusion count down on active turns after the application round; recalled Pokémon pause. Flinch expires at the next turn end. Grace lasts through the next turn end, including recovery during an action. applyVolatile prevents duplicate or grace-blocked application. Duration is tracked per active turn, not global round boundaries; switching timing and frozen saves remain separate milestones.
