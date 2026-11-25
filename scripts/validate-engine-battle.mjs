@@ -84,5 +84,20 @@ for(const moveId of ['vine-whip','water-gun','ember','quick-attack']){
  assert.throws(()=>e.moveWithOpportunity(state,state.version,registry,'a',pos(-5),{},[{actorId:'b',moveId,manualAttack:[1]}]));
 }
 assert.throws(()=>e.moveWithOpportunity(reactionGrid,reactionGrid.version,registry,'a',pos(-5),{b:10},[]),/reach/);
+// Forced replacement preserves spent resources and validates trainer range.
+assert.deepEqual(e.faintedReplacementOptions(sw,'a'),['reserve']);
+assert.throws(()=>e.advanceBattleTurn(sw,sw.version,'a'),/replacement/);
+const spent={...sw,turn:{...sw.turn,resources:{actionAvailable:false,bonusActionAvailable:false}}};
+const free=e.switchBattlePokemon(spent,spent.version,'a','reserve');
+assert.deepEqual(free.turn.resources,spent.turn.resources);assert.equal(free.turn.movementRemaining.reserve,0);
+assert.equal(free.reactionAvailable.reserve,false);assert.equal(free.version,spent.version+1);
+const far={...individual,rules:{...individual.rules,trainerParticipation:true},combatants:individual.combatants.map(c=>c.id==='a'?{...c,position:pos(65)}:c)};
+assert.deepEqual(e.faintedReplacementOptions(far,'a'),[]);
+assert.throws(()=>e.switchBattlePokemon(far,far.version,'a','reserve',pos(10)),/range/);
+const near={...far,combatants:far.combatants.map(c=>c.id==='a'?{...c,position:pos(60)}:c)};
+assert.throws(()=>e.switchBattlePokemon(near,near.version,'a','reserve',pos(20)),/range/);
+const released=e.switchBattlePokemon(near,near.version,'a','reserve',pos(10));
+assert.deepEqual(released.combatants.find(c=>c.id==='reserve').position,pos(10));
+assert.deepEqual(e.faintedReplacementOptions(released,'a'),[]);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
