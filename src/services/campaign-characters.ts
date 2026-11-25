@@ -36,3 +36,16 @@ export async function createCampaignCharacter(userId: string, id: string, input:
     return {character,pokemon:copied};
   });
 }
+
+/** Read only active player rosters, restricted to campaign owner/DM. */
+export async function listBattleRoster(userId:string,id:string) {
+  const access=await requireCampaignMember(userId,id);
+  const {campaignPermissions}=await import('./campaign-permissions');
+  const permissions=campaignPermissions(access);
+  if(!permissions.owner&&!permissions.dm)throw new ApiError(403,'DM permission required');
+  const {campaignMembers}=await import('@/db/schema/campaigns');
+  return db.select({id:campaignPokemon.id,trainerId:campaignCharacters.id,trainerName:campaignCharacters.name,name:campaignPokemon.name,number:campaignPokemon.number,data:campaignPokemon.data})
+    .from(campaignPokemon).innerJoin(campaignCharacters,eq(campaignPokemon.characterId,campaignCharacters.id))
+    .innerJoin(campaignMembers,eq(campaignCharacters.memberId,campaignMembers.id))
+    .where(and(eq(campaignMembers.campaignId,id),eq(campaignMembers.status,'active'),eq(campaignMembers.isPlayer,true)));
+}
