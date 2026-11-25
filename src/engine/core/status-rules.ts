@@ -28,6 +28,6 @@ export function frozenRecovery(p:PokemonCombatant,sourceLevel:number,natural:num
 export function opportunityCandidates(s:EncounterState,moverId:string,destination:Position,reachById:Readonly<Record<string,number>>,disengaged=false):readonly string[]{
  if(s.status!=='active'||s.rules.battlefield!=='grid'||!s.turn)throw new Error('Grid encounter required');
  const mover=s.combatants.find(c=>c.id===moverId);if(!mover?.position||!s.initiative[s.turn.slotIndex].combatantIds.includes(moverId))throw new Error('Invalid mover');
- if(!s.rules.reactions||!s.rules.opportunityAttacks||disengaged)return Object.freeze([]);
+ if(!s.rules.reactions||!s.rules.opportunityAttacks||disengaged||s.turn.disengagedIds?.includes(moverId))return Object.freeze([]);
  return Object.freeze(s.combatants.filter(c=>{if(c.sideId===mover.sideId||c.currentHP<=0||!c.position||!s.reactionAvailable[c.id]||c.kind==='trainer'&&!s.rules.trainerParticipation||c.kind==='pokemon'&&(c.deployment!=='active'||!statusRestrictions(c).reactions))return false;const reach=reachById[c.id];if(reach!==5&&reach!==10)throw new Error('Missing or invalid reach');return battlefieldDistance(c.position,mover.position!)<=reach&&battlefieldDistance(c.position,destination)>reach;}).map(c=>c.id));
 }

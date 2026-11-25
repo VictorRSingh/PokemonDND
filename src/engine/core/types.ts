@@ -68,6 +68,7 @@ export interface TurnState {
   readonly round: number;
   readonly slotIndex: number;
   readonly resources: TurnResources;
+  readonly disengagedIds?: readonly CombatantId[];
   readonly movementRemaining: Readonly<Record<CombatantId, number>>;
 }
 export interface EncounterState {

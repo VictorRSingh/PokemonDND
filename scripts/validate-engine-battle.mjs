@@ -48,5 +48,16 @@ assert.equal(thaw({frozen:[1,20]},flinchedIce).combatants[0].nonvolatile.kind,'f
 assert.throws(()=>thaw({frozen:20},flinchedIce));
 assert.equal(thaw({frozen:20,frozenSources:{advantage:['test']}},flinchedIce).combatants[0].nonvolatile,undefined);
 for(const mode of ['automatic','digital']){const state={...ice,rules:{...ice.rules,rollMode:mode}};assert.deepEqual(thaw({},state),thaw({},state));assert.throws(()=>thaw({frozen:20},state));}
+// Disengage consumes the action, protects only its actor, and expires on turn change.
+const safe=e.disengageBattlePokemon(reactionGrid,reactionGrid.version,'a');
+assert.equal(safe.version,reactionGrid.version+1);assert.equal(safe.turn.resources.actionAvailable,false);assert.equal(safe.turn.resources.bonusActionAvailable,true);assert.deepEqual(safe.turn.disengagedIds,['a']);assert.equal(reactionGrid.turn.resources.actionAvailable,true);
+assert.deepEqual(e.opportunityCandidates(safe,'a',{x:-5,y:0,elevation:0},{b:5}),[]);
+assert.throws(()=>e.disengageBattlePokemon(safe,safe.version,'a'));assert.throws(()=>e.disengageBattlePokemon(reactionGrid,reactionGrid.version,'b'));assert.throws(()=>e.disengageBattlePokemon(reactionGrid,reactionGrid.version-1,'a'));
+assert.throws(()=>e.moveWithOpportunity(safe,safe.version,registry,'a',{x:-5,y:0,elevation:0},{b:5},[{actorId:'b',moveId:'tackle',manualAttack:[1]}]));
+const safeMove=e.moveWithOpportunity(safe,safe.version,registry,'a',{x:-5,y:0,elevation:0},{b:5},[]);assert.equal(safeMove.reactions.length,0);assert.equal(safeMove.state.reactionAvailable.b,true);assert.equal(safeMove.state.turn.movementRemaining.a,25);
+assert.equal(e.moveOnGrid(safe,safe.version,'a',{x:-5,y:0,elevation:0}).combatants[0].position.x,-5);
+const nextSafe=e.advanceBattleTurn(safeMove.state,safeMove.state.version,'a');assert.equal(nextSafe.turn.disengagedIds,undefined);
+assert.throws(()=>e.disengageBattlePokemon(sleeping,sleeping.version,'a'));
+for(const mode of ['automatic','digital']){const state={...reactionGrid,rules:{...reactionGrid.rules,rollMode:mode}};assert.equal(e.disengageBattlePokemon(state,state.version,'a').turn.resources.actionAvailable,false);}
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
