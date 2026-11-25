@@ -72,5 +72,17 @@ assert.throws(()=>e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',r
 assert.throws(()=>e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',pos(5),{b:5},[],[pos(0),pos(5)]),/Occupied/);
 assert.throws(()=>e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',route[2],{b:5},[],[route[0]]),/destination/);
 assert.deepEqual(pathGrid.combatants[0].position,pos(-5));
+// Expanded melee reactions use normal PP and preserve the mover's action.
+for(const moveId of ['pound','peck','wing-attack','cut','struggle']){
+ const state={...reactionGrid,combatants:reactionGrid.combatants.map(c=>c.id==='b'?{...c,pokemon:{...c.pokemon,learnedMoves:[{moveId,pp:{kind:'limited',remaining:3}}]}}:c)};
+ const result=e.moveWithOpportunity(state,state.version,registry,'a',pos(-5),{},[{actorId:'b',moveId,manualAttack:[1]}]);
+ assert.equal(result.reactions.length,1);assert.equal(result.state.reactionAvailable.b,false);assert.equal(result.state.turn.resources.actionAvailable,true);
+ assert.equal(result.state.combatants[1].pokemon.learnedMoves[0].pp.remaining,moveId==='struggle'?3:2);
+}
+for(const moveId of ['vine-whip','water-gun','ember','quick-attack']){
+ const state={...reactionGrid,combatants:reactionGrid.combatants.map(c=>c.id==='b'?{...c,pokemon:{...c.pokemon,learnedMoves:[{moveId,pp:{kind:'limited',remaining:3}}]}}:c)};
+ assert.throws(()=>e.moveWithOpportunity(state,state.version,registry,'a',pos(-5),{},[{actorId:'b',moveId,manualAttack:[1]}]));
+}
+assert.throws(()=>e.moveWithOpportunity(reactionGrid,reactionGrid.version,registry,'a',pos(-5),{b:10},[]),/reach/);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
