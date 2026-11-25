@@ -36,6 +36,9 @@ export interface StatusEffect<T extends string> {
   readonly remainingRounds?: number;
 }
 interface CombatantBase {
+  readonly modifiers?: readonly {kind: "growl" | "leer" | "tail-whip"; expiresRound: number}[];
+  readonly dodging?: boolean;
+  readonly helped?: boolean;
   readonly id: CombatantId;
   readonly sideId: string;
   readonly name: string;
@@ -48,7 +51,7 @@ interface CombatantBase {
   readonly speed: MovementSpeed;
   readonly position?: Position;
 }
-export interface TrainerCombatant extends CombatantBase { readonly kind: 'trainer'; readonly campaignCharacterId?: string }
+export interface TrainerCombatant extends CombatantBase { readonly kind: 'trainer'; readonly campaignCharacterId?: string; readonly potions?: number }
 export interface PokemonCombatant extends CombatantBase {
   readonly kind: 'pokemon';
   readonly pokemon: PokemonInstance;
