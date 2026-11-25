@@ -1,0 +1,2 @@
+# Tactical prototype
+Roster encounters now register trainers, including spectator trainers when participation is disabled. Sandbox encounters do not invent trainers. Group deployment uses opposing columns. Grid movement uses adjacent five-foot steps and engine distance and range rules; opportunity attacks must be explicitly declined when offered (execution UI deferred). Arena mode does not enforce distance. Trainer movement is supported but trainer attacks are not. Roster snapshots remain read-only. Browser and full application compilation require local verification.

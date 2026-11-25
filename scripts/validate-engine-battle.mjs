@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {createRequire} from 'node:module';
 const dir=mkdtempSync(join(tmpdir(),'battle-'));const require=createRequire(import.meta.url);
 try{
-execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts','src/engine/core/roster-prototype.ts'],{stdio:'inherit'});
+execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts','src/engine/core/roster-prototype.ts','src/engine/core/tactical-prototype.ts'],{stdio:'inherit'});
 const e=require(join(dir,'core/index.js')),d=require(join(dir,'data/index.js'));
 const path=process.argv[2]??'public/data';const read=n=>JSON.parse(readFileSync(join(path,n+'.json'),'utf8'));const registry=d.createGameDataRegistry(read('pokemon_master_list'),read('move_list'),read('nature_list'));
 assert.equal(e.resolveAttack(e.recordManualD20(30,[1]),1).hit,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[19]),30,19).critical,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[20]),30).critical,true);assert.equal(e.resolveSave(e.recordManualD20(0,[20]),21).success,false);
@@ -249,8 +249,31 @@ const boosted=e.useBattleMove(boostedState,boostedState.version,registry,{actorI
 const normal=e.useBattleMove({...boostedState,rules:{...boostedState.rules,abilities:false}},boostedState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualAttack:[15],manualDamage:[[1]]});
 assert.equal(boosted.damage.subtotal-normal.damage.subtotal,e.getStabBonus(a.level));
 let live=rosterState;
-for(let i=0;i<100&&live.status==='active';i++){const actor=live.combatants.find(c=>c.id===live.initiative[live.turn.slotIndex].combatantIds[0]);const move=actor.pokemon.learnedMoves.find(m=>e.supportedBattleMoves().includes(m.moveId)&&m.pp.remaining>0)?.moveId??'struggle';live=proto.prototypeAction(live,registry,move).state;if(live.status==='active')live=proto.prototypeAction(live,registry).state;}
+for(let i=0;i<100&&live.status==='active';i++){const actor=live.combatants.find(c=>c.kind==='pokemon'&&c.currentHP>0&&live.initiative[live.turn.slotIndex].combatantIds.includes(c.id));if(!actor){live=proto.prototypeAction(live,registry).state;continue;}const move=actor.pokemon.learnedMoves.find(m=>e.supportedBattleMoves().includes(m.moveId)&&m.pp.remaining>0)?.moveId??'struggle';live=proto.prototypeAction(live,registry,move,actor.id).state;if(live.status==='active')live=proto.prototypeAction(live,registry).state;}
 assert.equal(live.status,'completed');
+const groupSetup={...setup,rules:{...setup.rules,battlefield:'arena',activePokemonLimit:2}};
+const group=rosterProto.startGroupPrototype(groupSetup,registry,[[saved,'charmander'],['bulbasaur','bulbasaur']]).state;
+assert.equal(group.combatants.length,5);
+assert.ok(group.initiative.some(s=>s.combatantIds.includes(saved.id)&&s.combatantIds.includes('trainer-'+saved.trainerId)));
+assert.throws(()=>rosterProto.startGroupPrototype(groupSetup,registry,[[saved],[saved]]));
+let g=group;for(let i=0;i<10&& !g.initiative[g.turn.slotIndex].combatantIds.includes(saved.id);i++)g=proto.prototypeAction(g,registry).state;
+assert.ok(g.initiative[g.turn.slotIndex].combatantIds.includes(saved.id));
+assert.throws(()=>proto.prototypeAction(g,registry,'scratch',saved.id,saved.id));
+const foe=g.combatants.find(c=>c.sideId==='side-1');
+const hit=proto.prototypeAction(g,registry,'scratch',saved.id,foe.id).state;
+assert.equal(hit.turn.resources.actionAvailable,false);
+assert.throws(()=>proto.prototypeAction(hit,registry,'scratch',saved.id,foe.id));
+const tactical=require(join(dir,'core/tactical-prototype.js'));
+assert.equal(e.battleMoveRange(registry,flame,'scratch'),5);
+assert.equal(e.battleMoveRange(registry,flame,'ember'),60);
+const step=tactical.tacticalStep(reactionGrid,registry,'a',{x:-5,y:0,elevation:0},true);
+assert.equal(step.state.turn.movementRemaining.a,25);
+assert.equal(step.state.combatants[0].position.x,-5);
+assert.throws(()=>tactical.tacticalStep(reactionGrid,registry,'a',{x:5,y:0,elevation:0},true),/Occupied/);
+assert.throws(()=>tactical.tacticalStep(reactionGrid,registry,'a',{x:-5,y:0,elevation:0}),/Opportunity/);
+assert.equal(reactionGrid.combatants[0].position.x,0);
+console.log('Tactical movement and range validation passed');
+console.log('Group initiative and target validation passed');
 console.log('Starter ability and roster battle validation passed');
 console.log('Roster snapshot validation passed');
 console.log('Prototype battle passed');
