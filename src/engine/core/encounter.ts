@@ -4,6 +4,7 @@ import { rollD20, recordManualD20, type D20Result } from './d20';
 import { getAbilityModifier, validateAbilityScores } from './ability-scores';
 import { getProficiencyBonus } from './progression';
 import { restoreRulesetSnapshot } from './rules';
+import { initializeBattleTurn, type StatusTurnRolls } from './battle';
 
 function freeze<T>(value:T):T { if(value && typeof value==='object'){ for(const child of Object.values(value)) freeze(child); Object.freeze(value); } return value; }
 function copy<T>(value:T):T { return JSON.parse(JSON.stringify(value)) as T; }
@@ -33,7 +34,7 @@ function makeTurn(state:EncounterState,index:number,round:number):TurnState {
   const slot=state.initiative[index]; const members=state.combatants.filter(c=>slot.combatantIds.includes(c.id)&&eligible(c,state));
   return {round,slotIndex:index,resources:{actionAvailable:true,bonusActionAvailable:true},movementRemaining:Object.fromEntries(members.map(c=>[c.id,c.speed.walking??0]))};
 }
-export function startEncounter(state:EncounterState,version:number,manualRolls?:Readonly<Record<string,number>>):{state:EncounterState; rolls:readonly {slotId:string;actorId:string;result:D20Result}[]} {
+export function startEncounter(state:EncounterState,version:number,manualRolls?:Readonly<Record<string,number>>,manualStatus:Readonly<Record<string,StatusTurnRolls>>={}):{state:EncounterState; rolls:readonly {slotId:string;actorId:string;result:D20Result}[]} {
   requireState(state,'setup',version);
   const active=state.combatants.filter(c=>eligible(c,state));
   if(new Set(active.filter(c=>c.kind==='pokemon').map(c=>c.sideId)).size<2) throw new Error('At least two opposing Pokémon sides required');
@@ -46,7 +47,7 @@ export function startEncounter(state:EncounterState,version:number,manualRolls?:
   for(const [key,members] of groups){const actor=state.combatants.find(c=>c.id===key)!; const modifier=getAbilityModifier(actor.abilityScores.dex); const result=state.rules.rollMode==='manual'?recordManualD20(modifier,[manualRolls![key]]):rollD20(modifier,rng,{},state.rules.rollMode); rolls.push({slotId:key,actorId:actor.id,result}); slots.push({id:key,combatantIds:members.map(c=>c.id),initiative:result.total});}
   slots.sort((a,b)=>b.initiative-a.initiative||(a.id<b.id?-1:a.id>b.id?1:0));
   const next={...state,initiative:slots};
-  return freeze({state:update(state,{status:'active',initiative:slots,turn:makeTurn(next,0,1),reactionAvailable:Object.fromEntries(active.map(c=>[c.id,state.rules.reactions])),rngState:rng.snapshot()}),rolls});
+  return freeze({state:initializeBattleTurn(update(state,{status:'active',initiative:slots,turn:makeTurn(next,0,1),reactionAvailable:Object.fromEntries(active.map(c=>[c.id,state.rules.reactions])),rngState:rng.snapshot()}),manualStatus),rolls});
 }
 function actorInTurn(state:EncounterState,actorId:string){ const actor=state.combatants.find(c=>c.id===actorId); if(!actor||!eligible(actor,state)||!state.turn||!state.initiative[state.turn.slotIndex].combatantIds.includes(actorId)) throw new Error('Actor is not in current turn'); return actor; }
 export function spendTurnResource(state:EncounterState,version:number,actorId:string,resource:'action'|'bonus-action'):EncounterState {
