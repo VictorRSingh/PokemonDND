@@ -8,9 +8,10 @@ const reachFor=(s:EncounterState,r:GameDataRegistry)=>Object.fromEntries(s.comba
 export function tacticalCandidates(s:EncounterState,r:GameDataRegistry,id:string,p:Position){return opportunityCandidates(s,id,p,reachFor(s,r));}
 export function tacticalReactionMoves(s:EncounterState,r:GameDataRegistry,id:string){const c=s.combatants.find(c=>c.id===id);return c?.kind==='pokemon'?[...c.pokemon.learnedMoves.filter(m=>supportedBattleMoves().includes(m.moveId)&&r.getMove(m.moveId)?.range.trim().toLowerCase()==='melee'&&r.getMove(m.moveId)?.timing.trim().toLowerCase()==='1 action'&&(!s.rules.trackPP||m.pp.kind!=='limited'||m.pp.remaining>0)).map(m=>m.moveId),'struggle']:[];}
 export function tacticalCost(s:EncounterState,id:string){const c=s.combatants.find(c=>c.id===id);const multiplier=c?.kind==='pokemon'?(statusRestrictions(c).incapacitated?0:statusRestrictions(c).movementMultiplier):1;return multiplier?Math.ceil(5/multiplier):Infinity;}
-export function tacticalAction(s:EncounterState,id:string,action:'dash'|'disengage'){
- const c=s.combatants.find(c=>c.id===id);if(!c||s.rules.battlefield!=='grid'||(c.kind==='pokemon'&&(statusRestrictions(c).incapacitated||c.actionForfeited)))throw new Error('Action unavailable');
+export function tacticalAction(s:EncounterState,id:string,action:'dash'|'disengage'|'dodge'){
+ const c=s.combatants.find(c=>c.id===id);if(!c||(action!=='dodge'&&s.rules.battlefield!=='grid')||(c.kind==='pokemon'&&(statusRestrictions(c).incapacitated||c.actionForfeited)))throw new Error('Action unavailable');
  const next=spendTurnResource(s,s.version,id,'action');const t=next.turn!;
+ if(action==='dodge')return {state:{...next,combatants:next.combatants.map(x=>x.id===id?{...x,dodging:true}:x)},message:`${c.name} used Dodge`};
  return {state:{...next,turn:action==='dash'?{...t,movementRemaining:{...t.movementRemaining,[id]:(t.movementRemaining[id]??0)+(c.speed.walking??0)}}:{...t,disengagedIds:[...new Set([...(t.disengagedIds??[]),id])]}},message:`${c.name} used ${action}`};
 }
 export function tacticalStep(s:EncounterState,registry:GameDataRegistry,id:string,destination:Position,declineReactions=false,choices:readonly ReactionChoice[]=[]){
