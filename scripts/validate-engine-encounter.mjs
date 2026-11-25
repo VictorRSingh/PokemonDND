@@ -26,5 +26,22 @@ try {
   const individual=setup({initiative:'individual'}); assert.equal(e.startEncounter(individual,individual.version).state.initiative.length,3); assert.deepEqual(e.startEncounter(individual,individual.version),e.startEncounter(individual,individual.version));
   const casual=setup({trainerParticipation:false}); assert.equal(e.startEncounter(casual,casual.version).state.initiative.length,2);
   assert.throws(()=>e.registerCombatant(s,pokemon('extra','a','t'),s.version)); assert.throws(()=>e.registerCombatant(s,trainer,s.version)); assert.ok(Object.isFrozen(started.state.combatants[0].abilityScores));
+  const settings={defaultActivePokemonLimit:2,battleRules:e.createRulesetSnapshot('casual')};
+  const campaign={id:'campaign-1',status:'active',settings};
+  let linked=e.createCampaignEncounter(campaign,'linked','wild',42);
+  assert.equal(linked.campaignId,campaign.id); assert.equal(linked.rules.activePokemonLimit,2);
+  assert.equal(linked.rules.trackPP,false); assert.equal(linked.rules.reactions,false);
+  settings.defaultActivePokemonLimit=1;
+  assert.equal(linked.rules.activePokemonLimit,2); assert.ok(Object.isFrozen(linked.rules));
+  for(const c of [trainer,pokemon('p','a','t'),pokemon('p2','a','t'),pokemon('q','b')]) linked=e.registerCombatant(linked,c,linked.version);
+  assert.throws(()=>e.registerCombatant(linked,pokemon('p3','a','t'),linked.version));
+  const linkedStarted=e.startEncounter(linked,linked.version).state;
+  assert.equal(linkedStarted.campaignId,campaign.id); assert.equal(linkedStarted.initiative.length,2);
+  assert.throws(()=>e.spendReaction(linkedStarted,linkedStarted.version,'p'));
+  assert.equal(e.resolveCampaignRules({defaultActivePokemonLimit:1}).battlefield,'grid');
+  assert.throws(()=>e.resolveCampaignRules({defaultActivePokemonLimit:0}));
+  assert.throws(()=>e.resolveCampaignRules({defaultActivePokemonLimit:1,battleRules:{}}));
+  assert.throws(()=>e.createCampaignEncounter({...campaign,status:'paused'},'x','wild',42));
+  assert.throws(()=>e.createCampaignEncounter({...campaign,id:''},'x','wild',42));
   console.log(JSON.stringify({encounter:'passed',initiative:'passed',turns:'passed',lifecycle:'passed',result:'passed'}));
 } finally { rmSync(dir,{recursive:true,force:true}); }

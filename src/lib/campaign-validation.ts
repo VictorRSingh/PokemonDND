@@ -1,7 +1,15 @@
 import { z } from "zod";
 import { defaultCampaignSettings } from "@/db/schema/campaigns";
 
+import { restoreRulesetSnapshot } from "@/engine/core/rules";
+import type { RulesetSnapshot } from "@/engine/core/types";
+
+const battleRulesInput = z.custom<RulesetSnapshot>(value => {
+  try { restoreRulesetSnapshot(value); return true; } catch { return false; }
+}, "Invalid battle rules snapshot");
+
 export const campaignSettingsInput = z.object({
+  battleRules: battleRulesInput.optional(),
   maxPlayers: z.number().int().min(1).max(10),
   allowLateJoin: z.boolean(),
   allowPlayerInvites: z.boolean(),

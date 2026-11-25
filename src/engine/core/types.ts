@@ -75,6 +75,7 @@ export interface TurnState {
 }
 export type BattleResult = { readonly kind: "victory"; readonly winner: string } | { readonly kind: "draw" | "terminated"; readonly winner: null };
 export interface EncounterState {
+  readonly campaignId?: string;
   readonly result?: BattleResult;
   readonly id: EncounterId;
   readonly kind: EncounterKind;

@@ -1,3 +1,4 @@
+import type { RulesetSnapshot } from "@/engine/core/types";
 import { sql } from "drizzle-orm";
 import { pgTable, pgEnum, uuid, text, integer, boolean, jsonb, timestamp, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { users } from "./auth";
@@ -10,6 +11,7 @@ export const campaignStatus = pgEnum("campaign_status", ["active", "paused", "co
 export const membershipStatus = pgEnum("campaign_membership_status", ["active", "left", "removed"]);
 
 export interface CampaignSettings {
+  battleRules?: RulesetSnapshot;
   maxPlayers: number;
   allowLateJoin: boolean;
   allowPlayerInvites: boolean;

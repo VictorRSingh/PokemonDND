@@ -16,3 +16,5 @@ export * from './battle-completion';
 export * from './status-rules';
 
 export * from './ability-effects';
+
+export * from "./campaign-rules";
