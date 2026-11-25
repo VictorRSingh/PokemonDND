@@ -17,12 +17,12 @@ export function rosterCombatant(row:RosterEntry,registry:GameDataRegistry,sideId
  const pokemon={id:row.id,speciesId:species.id,level,xp:0,abilityScores,armorClass:d.armor_class,maximumHP,currentHP,learnedMoves,...(abilityId?{abilityId}: {})};
  return {...pokemon,kind:'pokemon',sideId,name:d.given_name?.trim()||species.name,speed:species.speed,temporaryHP:0,deployment:'active',volatile:[],pokemon,position:{x,y:0,elevation:0}};
 }
-export function startRosterPrototype(state:EncounterState,registry:GameDataRegistry,left:RosterEntry,right:RosterEntry|string,trainerSetup?:TrainerSetup){
- return startGroupPrototype(state,registry,[[left],[right]],trainerSetup);
+export function startRosterPrototype(state:EncounterState,registry:GameDataRegistry,left:RosterEntry,right:RosterEntry|string,trainerSetup?:TrainerSetup,configure?:(state:EncounterState)=>EncounterState){
+ return startGroupPrototype(state,registry,[[left],[right]],trainerSetup,configure);
 }
 
 /** Additional local encounter participants. Trainer stats are explicit prototype defaults. */
-export function startGroupPrototype(state:EncounterState,registry:GameDataRegistry,sides:readonly (readonly (RosterEntry|string)[])[],trainerSetup?:TrainerSetup){
+export function startGroupPrototype(state:EncounterState,registry:GameDataRegistry,sides:readonly (readonly (RosterEntry|string)[])[],trainerSetup?:TrainerSetup,configure?:(state:EncounterState)=>EncounterState){
  if(state.rules.rollMode==='manual'||state.rules.weather||state.rules.terrain)throw new Error('Unsupported prototype rules');
  if(sides.length!==2||sides.some(s=>!s.length||s.length>6))throw new Error('Select 1–6 Pokémon per side');
  if(trainerSetup&&(!Number.isSafeInteger(trainerSetup.potions)||trainerSetup.potions<0))throw new Error('Invalid potion count');
@@ -41,5 +41,5 @@ export function startGroupPrototype(state:EncounterState,registry:GameDataRegist
  state=registerCombatant(state,{...rosterCombatant(entry,registry,sideId,x),position:{x,y,elevation:0},trainerId},state.version);
  }
  }
- return startEncounter(state,state.version);
+ state=configure?configure(state):state;return startEncounter(state,state.version);
 }

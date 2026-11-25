@@ -10,6 +10,13 @@ execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict',
 const e=require(join(dir,'core/index.js')),d=require(join(dir,'data/index.js'));
 const path=process.argv[2]??'public/data';const read=n=>JSON.parse(readFileSync(join(path,n+'.json'),'utf8'));const registry=d.createGameDataRegistry(read('pokemon_master_list'),read('move_list'),read('nature_list'));
 assert.equal(e.resolveAttack(e.recordManualD20(30,[1]),1).hit,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[19]),30,19).critical,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[20]),30).critical,true);assert.equal(e.resolveSave(e.recordManualD20(0,[20]),21).success,false);
+const targeting=require(join(dir,'core/targeting.js'));
+const sightPos=(x,y)=>({x,y,elevation:0});
+const sight={rules:{battlefield:'grid'},combatants:[],battlefieldTerrain:{'5,0':'wall'}};
+assert.equal(targeting.tacticalCover(sight,sightPos(0,0),sightPos(10,0)),'full');
+assert.equal(targeting.tacticalCover({...sight,battlefieldTerrain:{'5,0':'water'}},sightPos(0,0),sightPos(10,0)),'none');
+assert.equal(targeting.coverBonus('half'),2);assert.equal(targeting.coverBonus('three-quarters'),5);
+assert.equal(targeting.areaPreview(sightPos(0,0),sightPos(10,10),10),true);assert.equal(targeting.areaPreview(sightPos(0,0),sightPos(15,0),10),false);
 const rng=e.createRandom(42);assert.equal(e.resolveDamage({count:1,sides:6,modifier:0},3,2,true,rng,{manual:[[4,5]]}).amount,24);
 let s=e.createEncounter('test','wild',e.campaignBattleRules({defaultActivePokemonLimit:1},'casual',{rollMode:'manual',abilities:false,trackPP:true}),42);
 for(const [id,speciesId,moveId] of [['a','charmander','ember'],['b','bulbasaur','tackle']]){const sp=registry.getSpecies(speciesId);const p={id,speciesId,level:5,xp:0,abilityScores:sp.abilityScores,armorClass:sp.armorClass,maximumHP:20,currentHP:20,learnedMoves:[{moveId,pp:{kind:'limited',remaining:3}}]};s=e.registerCombatant(s,{...p,kind:'pokemon',sideId:id,name:sp.name,speed:sp.speed,temporaryHP:0,deployment:'active',volatile:[],pokemon:p},s.version);}
@@ -224,6 +231,7 @@ console.log('Campaign end-to-end and deterministic replay passed');
 const proto=require(join(dir,'core/prototype.js'));
 assert.ok(proto.prototypeChoices(registry).some(x=>x.id==='charmander'));
 let demo=proto.startPrototype(e.createCampaignEncounter({id:'demo',status:'active',settings:{defaultActivePokemonLimit:1}},'demo','wild',42),registry,['charmander','bulbasaur']).state;
+assert.equal(proto.prototypeAction(demo,registry).message,`${demo.combatants.find(c=>c.id===demo.initiative[demo.turn.slotIndex].combatantIds[0]).name} ended its turn`);
 for(let i=0;i<100&&demo.status==='active';i++){const actor=demo.combatants.find(c=>c.id===demo.initiative[demo.turn.slotIndex].combatantIds[0]);const move=actor.pokemon.learnedMoves.find(m=>m.pp.kind==='unlimited'||m.pp.remaining>0)?.moveId??'struggle';demo=proto.prototypeAction(demo,registry,move).state;if(demo.status==='active')demo=proto.prototypeAction(demo,registry).state;}
 assert.equal(demo.status,'completed');
 const rosterProto=require(join(dir,'core/roster-prototype.js'));
@@ -258,6 +266,7 @@ assert.ok(group.initiative.some(s=>s.combatantIds.includes(saved.id)&&s.combatan
 assert.throws(()=>rosterProto.startGroupPrototype(groupSetup,registry,[[saved],[saved]]));
 let g=group;for(let i=0;i<10&& !g.initiative[g.turn.slotIndex].combatantIds.includes(saved.id);i++)g=proto.prototypeAction(g,registry).state;
 assert.ok(g.initiative[g.turn.slotIndex].combatantIds.includes(saved.id));
+assert.match(proto.prototypeAction(g,registry,undefined,saved.id).message,/Flame ended the shared turn \(.*Ash.*Flame.*\)|Flame ended the shared turn \(.*Flame.*Ash.*\)/);
 assert.throws(()=>proto.prototypeAction(g,registry,'scratch',saved.id,saved.id));
 const foe=g.combatants.find(c=>c.sideId==='side-1');
 const hit=proto.prototypeAction(g,registry,'scratch',saved.id,foe.id).state;
@@ -272,6 +281,27 @@ assert.equal(step.state.combatants[0].position.x,-5);
 assert.throws(()=>tactical.tacticalStep(reactionGrid,registry,'a',{x:5,y:0,elevation:0},true),/Occupied/);
 assert.throws(()=>tactical.tacticalStep(reactionGrid,registry,'a',{x:-5,y:0,elevation:0}),/Opportunity/);
 assert.equal(reactionGrid.combatants[0].position.x,0);
+// Terrain costs and impassable cells must be enforced before reactions or resource changes.
+for(const tile of ['wall','blocked']) assert.throws(()=>tactical.tacticalStep(reactionGrid,registry,'a',pos(-5),true,[],{'-5,0':tile}),/Blocked terrain/);
+for(const tile of ['difficult','water']) {
+ const map={'-5,0':tile};
+ const result=tactical.tacticalStep(reactionGrid,registry,'a',pos(-5),true,[],map);
+ assert.equal(result.state.turn.movementRemaining.a,20);
+ assert.match(result.message,/10 ft movement spent/);
+ assert.throws(()=>tactical.tacticalStep({...reactionGrid,turn:{...reactionGrid.turn,movementRemaining:{a:5}}},registry,'a',pos(-5),true,[],map),/Insufficient movement/);
+ const reactedTerrain=tactical.tacticalStep(reactionGrid,registry,'a',pos(-5),false,[{actorId:'b',moveId:'tackle',manualAttack:[1]}],map);
+ assert.equal(reactedTerrain.state.turn.movementRemaining.a,20);
+ assert.equal(reactedTerrain.state.reactionAvailable.b,false);
+}
+assert.equal(reactionGrid.turn.movementRemaining.a,30);
+const bounds={minX:-20,maxX:20,minY:-20,maxY:20};
+const routes=tactical.tacticalRoutes(reactionGrid,'a',{'-5,0':'wall'},bounds);
+const advancedRoute=routes.get('-10,0,0');assert.ok(advancedRoute);assert.equal(advancedRoute.cost,10);assert.ok(advancedRoute.path.every(p=>p.x!==-5||p.y!==0));
+const routed=tactical.tacticalRoute(reactionGrid,registry,'a',advancedRoute.path,{'-5,0':'wall'},'walking',[],true);assert.equal(routed.state.turn.movementRemaining.a,20);assert.equal(routed.state.combatants[0].position.x,-10);
+assert.ok(tactical.routeCandidates(reactionGrid,registry,'a',advancedRoute.path).includes('b'));
+const flyer={...reactionGrid,combatants:reactionGrid.combatants.map(c=>c.id==='a'?{...c,speed:{...c.speed,flying:30,swimming:30}}:c)};
+const flight=tactical.tacticalRoutes(flyer,'a',{},bounds,'flying',10).get('0,0,10');assert.ok(flight);assert.equal(flight.cost,10);assert.equal(tactical.tacticalRoute(flyer,registry,'a',flight.path,{},'flying',[],true).state.combatants[0].position.elevation,10);
+const swim=tactical.tacticalRoutes(flyer,'a',{'-5,0':'water'},bounds,'swimming').get('-5,0,0');assert.equal(swim.cost,5);
 const dash=tactical.tacticalAction(reactionGrid,'a','dash').state;
 assert.equal(dash.turn.movementRemaining.a,60);
 assert.equal(dash.turn.resources.actionAvailable,false);

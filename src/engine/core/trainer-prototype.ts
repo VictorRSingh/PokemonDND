@@ -1,3 +1,4 @@
+import { tacticalCover, coverBonus } from './targeting';
 import {getAbilityModifier} from './ability-scores';
 import {getProficiencyBonus} from './progression';
 import {rollD20} from './d20';
@@ -17,6 +18,7 @@ export function trainerActionReason(s:EncounterState,id:string,targetId:string,a
  if(t?.kind!=='pokemon'||t.deployment!=='active'||t.currentHP<=0)return 'Select a living Pokémon';
  if((action==='attack')===(a.sideId===t.sideId))return 'Invalid target side';
  if(s.rules.battlefield==='grid'&&(!a.position||!t.position||battlefieldDistance(a.position,t.position)>5))return 'Target must be within 5 ft';
+ if(a.position&&t.position&&tacticalCover(s,a.position,t.position)==='full')return 'Line of sight blocked';
  if(action==='potion'&&t.currentHP>=t.maximumHP)return 'Target already at full HP';
  return undefined;
 }
@@ -28,9 +30,9 @@ export function trainerAction(s:EncounterState,id:string,targetId:string,action:
  if((action==='attack')===(a.sideId===t.sideId))throw new Error('Invalid target side');
  const next=spendTurnResource(s,s.version,id,'action'),rng=restoreRandom(s.rngState);
  if(action==='attack'){
- const mod=getAbilityModifier(a.abilityScores.str);const roll=rollD20(mod+getProficiencyBonus(a.level),rng,{disadvantage:t.dodging&&!statusRestrictions(t).incapacitated?['Dodge']:[]},s.rules.rollMode);const hit=resolveAttack(roll,t.armorClass);const amount=hit.hit?Math.max(0,1+mod):0;
+ const mod=getAbilityModifier(a.abilityScores.str);const roll=rollD20(mod+getProficiencyBonus(a.level),rng,{disadvantage:t.dodging&&!statusRestrictions(t).incapacitated?['Dodge']:[]},s.rules.rollMode);const hit=resolveAttack(roll,t.armorClass+(a.position&&t.position?coverBonus(tacticalCover(s,a.position,t.position)):0));const amount=hit.hit?Math.max(0,1+mod):0;
  const result=resolveManualDamage({...next,rngState:rng.snapshot()},next.version,t.id,amount,'Prototype unarmed attack',id);
- return {state:{...result.state,version:s.version+1},message:`${a.name} unarmed attack: ${roll.total} vs AC ${t.armorClass}, ${hit.hit?amount+' damage':'miss'}`};
+ return {state:{...result.state,version:s.version+1},message:`${a.name} unarmed attack: ${roll.total} vs AC ${hit.ac}, ${hit.hit?amount+' damage':'miss'}`};
  }
  if(action==='potion'){
  if(!(a.potions&&a.potions>0)||t.currentHP===t.maximumHP)throw new Error('No potion or target already healthy');
