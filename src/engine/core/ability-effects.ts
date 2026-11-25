@@ -1,3 +1,4 @@
+import { getProficiencyBonus } from './progression';
 import type { GameDataRegistry } from '../data/registry';
 import type { AbilityDefinition, DamageType } from '../data/types';
 import type { EncounterState, PokemonCombatant, NonvolatileStatus, VolatileStatus } from './types';
@@ -10,10 +11,12 @@ export interface AbilityContext {
  readonly counterpart?: PokemonCombatant;
  readonly moveId?: string;
  readonly amount?: number;
+ readonly melee?: boolean;
+ readonly knockedOut?: boolean;
  readonly damageType?: DamageType;
  readonly status?: NonvolatileStatus | VolatileStatus;
 }
-export type AbilityEffect = { readonly kind: 'note'; readonly message: string } | { readonly kind: 'manual'; readonly reason: string } | { readonly kind: 'damage-multiplier'; readonly multiplier: 0 | 0.5 } | { readonly kind: 'status-immunity' };
+export type AbilityEffect = { readonly kind: 'note'; readonly message: string } | { readonly kind: 'manual'; readonly reason: string } | { readonly kind: 'damage-multiplier'; readonly multiplier: 0 | 0.5 } | { readonly kind: 'status-immunity' } | { readonly kind: 'retaliation'; readonly amount: number; readonly damageType: DamageType; readonly roll?: 4; readonly optional?: boolean };
 export interface AbilityHandler {
  readonly id: string;
  readonly hooks: readonly AbilityHook[];
@@ -36,7 +39,12 @@ const passive = (id: string, statuses: readonly (NonvolatileStatus | VolatileSta
   return [];
  }
 });
+const retaliation = (id: string, damageType: DamageType, optional = false): AbilityHandler => ({
+ id, hooks:['after-damage'], execute: c => c.melee && !c.knockedOut ? [{kind:'retaliation',amount:getProficiencyBonus(c.owner.level),damageType,roll:4,optional}] : []
+});
 export const defaultAbilityEffects = createAbilityEffectRegistry([
+ retaliation('static','electric'), retaliation('rough-skin','typeless',true), retaliation('iron-barbs','typeless',true),
+ {id:'aftermath',hooks:['after-damage'],execute:c=>c.melee&&c.knockedOut&&c.amount ? [{kind:'retaliation',amount:Math.floor(c.amount/2),damageType:'typeless'}]:[]},
  passive('levitate', [], ['ground']), passive('thick-fat', [], ['fire','ice'], 0.5),
  passive('heatproof', ['burned'], ['fire'], 0.5), passive('water-veil', ['burned']),
  passive('immunity', ['poisoned']), passive('magma-armor', ['frozen']), passive('limber', ['paralyzed']),

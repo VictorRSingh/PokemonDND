@@ -173,5 +173,23 @@ const tempo=passiveOwner('slowpoke','own-tempo');
 assert.equal(e.applyVolatile(tempo,'confused','a',1,abilityState,registry),tempo);
 const levitate=passiveOwner('gastly','levitate');
 assert.deepEqual(e.evaluateAbility({hook:'before-damage',state:abilityState,owner:levitate,damageType:'ground'},registry),[{kind:'damage-multiplier',multiplier:0}]);
+// Triggered abilities resolve before battle outcome and preserve input state.
+const meleeActor={...a,pokemon:{...a.pokemon,learnedMoves:[{moveId:'tackle',pp:{kind:'limited',remaining:3}}]}};
+const meleeInput={actorId:'a',targetId:'b',moveId:'tackle',manualAttack:[19],manualDamage:[[4]],manualAbility:4};
+for(const [speciesId,id] of [['pikachu','static'],['carvanha','rough-skin'],['ferroseed','iron-barbs']]){
+ const state={...abilityState,combatants:[meleeActor,passiveOwner(speciesId,id)]};
+ const hit=e.useBattleMove(state,state.version,registry,meleeInput);
+ assert.equal(hit.abilityEvents[0].abilityId,id);assert.equal(hit.abilityEvents[0].amount,3);
+ assert.equal(hit.state.combatants[0].currentHP,17);assert.equal(state.combatants[0].currentHP,20);
+ assert.equal(e.useBattleMove(state,state.version,registry,{...meleeInput,manualAbility:1}).abilityEvents[0].amount,0);
+ assert.throws(()=>e.useBattleMove(state,state.version,registry,{...meleeInput,manualAbility:5}));
+ assert.equal(e.useBattleMove(state,state.version,registry,{...meleeInput,manualAttack:[1]}).abilityEvents.length,0);
+ if(id!=='static')assert.equal(e.useBattleMove(state,state.version,registry,{...meleeInput,declineAbility:true}).abilityEvents.length,0);
+}
+const aftermathState={...abilityState,combatants:[{...meleeActor,currentHP:1},{...passiveOwner('drifloon','aftermath'),currentHP:1}]};
+// Drifloon is immune to Normal, so use a non-ghost Aftermath owner.
+const blastState={...aftermathState,combatants:[aftermathState.combatants[0],{...passiveOwner('stunky','aftermath'),currentHP:1}]};
+const blast=e.useBattleMove(blastState,blastState.version,registry,meleeInput);
+assert.equal(blast.abilityEvents[0].amount,Math.floor(blast.amount/2));assert.equal(blast.state.result.kind,'draw');
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
