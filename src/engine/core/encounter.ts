@@ -4,7 +4,7 @@ import { rollD20, recordManualD20, type D20Result } from './d20';
 import { getAbilityModifier, validateAbilityScores } from './ability-scores';
 import { getProficiencyBonus } from './progression';
 import { restoreRulesetSnapshot } from './rules';
-import { initializeBattleTurn, type StatusTurnRolls } from './battle';
+import { initializeBattleTurn, battleOutcome, type StatusTurnRolls } from './battle';
 
 function freeze<T>(value:T):T { if(value && typeof value==='object'){ for(const child of Object.values(value)) freeze(child); Object.freeze(value); } return value; }
 function copy<T>(value:T):T { return JSON.parse(JSON.stringify(value)) as T; }
@@ -65,4 +65,4 @@ export function endTurn(state:EncounterState,version:number,actorId:string):Enco
 }
 export function pauseEncounter(state:EncounterState,version:number):EncounterState {requireState(state,'active',version);return update(state,{status:'paused'});}
 export function resumeEncounter(state:EncounterState,version:number):EncounterState {requireState(state,'paused',version);return update(state,{status:'active'});}
-export function completeEncounter(state:EncounterState,version:number):EncounterState {if(state.version!==version||!['active','paused'].includes(state.status)) throw new Error('Cannot complete encounter'); const {turn:_,...rest}=state; return freeze({...rest,status:'completed',version:state.version+1});}
+export function completeEncounter(state:EncounterState,version:number):EncounterState {if(state.version!==version||!['active','paused'].includes(state.status)) throw new Error('Cannot complete encounter'); const {turn:_,...rest}=state; const outcome=battleOutcome(state); const result=outcome.finished?(outcome.winner===null?{kind:'draw' as const,winner:null}:{kind:'victory' as const,winner:outcome.winner}):{kind:'terminated' as const,winner:null}; return freeze({...rest,result,reactionAvailable:Object.fromEntries(Object.keys(state.reactionAvailable).map(id=>[id,false])),status:'completed',version:state.version+1});}

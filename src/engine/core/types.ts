@@ -73,7 +73,9 @@ export interface TurnState {
   readonly disengagedIds?: readonly CombatantId[];
   readonly movementRemaining: Readonly<Record<CombatantId, number>>;
 }
+export type BattleResult = { readonly kind: "victory"; readonly winner: string } | { readonly kind: "draw" | "terminated"; readonly winner: null };
 export interface EncounterState {
+  readonly result?: BattleResult;
   readonly id: EncounterId;
   readonly kind: EncounterKind;
   readonly status: 'setup' | 'active' | 'paused' | 'completed';

@@ -125,5 +125,21 @@ assert.equal(get(partial,'reserve').currentHP,get(deployed,'reserve').currentHP)
 const full=e.advanceBattleTurn(partial,partial.version,'b');
 const afterFull=e.advanceBattleTurn(full,full.version,'reserve',{reserve:{sleep:1}});
 assert.equal(get(afterFull,'reserve').currentHP,get(deployed,'reserve').currentHP-3);assert.equal(get(afterFull,'reserve').volatile[0].remainingRounds,1);assert.equal(get(afterFull,'reserve').statusGrace.confused,1);assert.equal(get(afterFull,'a').currentHP,get(deployed,'a').currentHP);assert.equal(get(afterFull,'a').volatile[0].remainingRounds,2);
+// Terminal outcomes are persisted and disable all reactions.
+assert.deepEqual(r.state.result,{kind:'victory',winner:'a'});
+assert.equal(r.state.turn,undefined);
+assert.ok(Object.values(r.state.reactionAvailable).every(x=>!x));
+assert.throws(()=>e.advanceBattleTurn(r.state,r.state.version,'a'));
+assert.throws(()=>e.resolveManualDamage(r.state,r.state.version,'a',1,'test','dm'));
+const drawState={...before,combatants:before.combatants.map(c=>({...c,currentHP:0}))};
+const draw=e.advanceBattleTurn(drawState,drawState.version,'a');
+assert.deepEqual(draw.result,{kind:'draw',winner:null});
+assert.equal(draw.version,drawState.version+1);
+assert.deepEqual(e.battleOutcome(draw),{finished:true,winner:null});
+const terminated=e.completeEncounter(before,before.version);
+assert.deepEqual(terminated.result,{kind:'terminated',winner:null});
+assert.deepEqual(e.battleOutcome(terminated),{finished:true,winner:null});
+const reserveAlive={...before,combatants:[...before.combatants.map(c=>c.id==='b'?{...c,currentHP:0}:c),{...before.combatants[1],id:'b-reserve',deployment:'recalled'}]};
+assert.equal(e.battleOutcome(reserveAlive).finished,false);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
