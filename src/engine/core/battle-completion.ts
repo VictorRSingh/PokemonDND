@@ -19,11 +19,12 @@ export function switchBattlePokemon(s:EncounterState,v:number,outgoingId:string,
  if(a.currentHP===0&&!faintedReplacementOptions(s,a.id).includes(b.id))throw new Error('Invalid fainted replacement or recall range');
  if(s.initiative.some(x=>x.combatantIds.includes(b.id)))throw new Error('Reserve already in initiative');
  const position=destination??a.position;
- if(destination&&(a.currentHP>0||s.rules.battlefield!=='grid'))throw new Error('Unsupported replacement destination');
+ if(destination&&s.rules.battlefield!=='grid')throw new Error('Unsupported replacement destination');
  if(s.rules.battlefield==='grid'){
-  const trainer=s.combatants.find(c=>c.id===a.trainerId);
-  if(!position||!a.position||s.combatants.some(c=>c.id!==a.id&&c.id!==b.id&&c.currentHP>0&&(c.kind==='trainer'?s.rules.trainerParticipation:c.deployment==='active')&&c.position&&battlefieldDistance(c.position,position)===0))throw new Error('Replacement position unavailable');
-  if(a.currentHP===0&&s.rules.trainerParticipation&&(!trainer?.position||battlefieldDistance(trainer.position,position)>15))throw new Error('Release position out of range');
+  const trainer=s.combatants.find(c=>c.id===a.trainerId&&c.kind==='trainer'&&c.sideId===a.sideId);
+  if(s.rules.trainerParticipation&&(!trainer?.position||!a.position||battlefieldDistance(trainer.position,a.position)>60))throw new Error('Recall position out of range');
+  if(!position||!a.position||![position.x,position.y,position.elevation].every(Number.isSafeInteger)||s.combatants.some(c=>c.id!==a.id&&c.id!==b.id&&c.currentHP>0&&(c.kind==='trainer'?s.rules.trainerParticipation:c.deployment==='active')&&c.position&&battlefieldDistance(c.position,position)===0))throw new Error('Replacement position unavailable');
+  if(s.rules.trainerParticipation&&(!trainer?.position||battlefieldDistance(trainer.position,position)>15))throw new Error('Release position out of range');
  }
  const slot=s.initiative.find(x=>x.combatantIds.includes(a.id));if(!slot)throw new Error('Missing initiative slot');
  const current=s.initiative[s.turn!.slotIndex].id===slot.id;

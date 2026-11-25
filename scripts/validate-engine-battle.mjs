@@ -99,5 +99,20 @@ assert.throws(()=>e.switchBattlePokemon(near,near.version,'a','reserve',pos(20))
 const released=e.switchBattlePokemon(near,near.version,'a','reserve',pos(10));
 assert.deepEqual(released.combatants.find(c=>c.id==='reserve').position,pos(10));
 assert.deepEqual(e.faintedReplacementOptions(released,'a'),[]);
+// Voluntary switching uses the same recall/release range as forced replacement.
+const voluntary={...near,turn:{...near.turn,round:2},combatants:near.combatants.map(c=>c.id==='a'?{...c,currentHP:10}:c)};
+const voluntaryResult=e.switchBattlePokemon(voluntary,voluntary.version,'a','reserve',pos(15,5));
+assert.equal(voluntaryResult.turn.resources.actionAvailable,false);
+assert.equal(voluntaryResult.turn.resources.bonusActionAvailable,true);
+assert.equal(voluntaryResult.version,voluntary.version+1);
+assert.deepEqual(voluntaryResult.combatants.find(c=>c.id==='reserve').position,pos(15,5));
+assert.equal(voluntary.combatants.find(c=>c.id==='a').deployment,'active');
+assert.throws(()=>e.switchBattlePokemon(voluntary,voluntary.version,'a','reserve',pos(20)),/range/);
+assert.throws(()=>e.switchBattlePokemon(voluntary,voluntary.version,'a','reserve',pos(0)),/unavailable/);
+assert.throws(()=>e.switchBattlePokemon(voluntary,voluntary.version,'a','reserve',pos(NaN)),/unavailable/);
+const voluntaryFar={...voluntary,combatants:voluntary.combatants.map(c=>c.id==='a'?{...c,position:pos(65)}:c)};
+assert.throws(()=>e.switchBattlePokemon(voluntaryFar,voluntaryFar.version,'a','reserve',pos(15,5)),/range/);
+assert.throws(()=>e.switchBattlePokemon({...voluntary,turn:{...voluntary.turn,round:1}},voluntary.version,'a','reserve',pos(15,5)),/Switch unavailable/);
+assert.throws(()=>e.switchBattlePokemon({...voluntary,turn:{...voluntary.turn,resources:{...voluntary.turn.resources,actionAvailable:false}}},voluntary.version,'a','reserve',pos(15,5)),/spent/);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
