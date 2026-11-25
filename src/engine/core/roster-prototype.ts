@@ -4,6 +4,7 @@ import {canonicalId,moveId} from '../data/normalize/pokemon';
 import {ABILITY_KEYS,type AbilityScores} from '../data/types';
 import type {GameDataRegistry} from '../data/registry';
 import type {EncounterState,PokemonCombatant} from './types';
+export interface TrainerSetup {level:number;armorClass:number;maximumHP:number;abilityScores:AbilityScores;walking:number;potions:number}
 export interface RosterEntry {id:string;trainerId:string;trainerName:string;name:string;number:number;data:{given_name?:string;current_level:number|null;level:number;armor_class:number;hit_points:number;current_hit_points:number|null;stats:Record<string,unknown>;selected_moves?:string[];selected_ability?:string}}
 export function rosterCombatant(row:RosterEntry,registry:GameDataRegistry,sideId:string,x:number):PokemonCombatant {
  const species=registry.getSpecies(row.name);if(!species||species.number!==row.number)throw new Error('Unknown saved species: '+row.name);
@@ -16,14 +17,15 @@ export function rosterCombatant(row:RosterEntry,registry:GameDataRegistry,sideId
  const pokemon={id:row.id,speciesId:species.id,level,xp:0,abilityScores,armorClass:d.armor_class,maximumHP,currentHP,learnedMoves,...(abilityId?{abilityId}: {})};
  return {...pokemon,kind:'pokemon',sideId,name:d.given_name?.trim()||species.name,speed:species.speed,temporaryHP:0,deployment:'active',volatile:[],pokemon,position:{x,y:0,elevation:0}};
 }
-export function startRosterPrototype(state:EncounterState,registry:GameDataRegistry,left:RosterEntry,right:RosterEntry|string){
- return startGroupPrototype(state,registry,[[left],[right]]);
+export function startRosterPrototype(state:EncounterState,registry:GameDataRegistry,left:RosterEntry,right:RosterEntry|string,trainerSetup?:TrainerSetup){
+ return startGroupPrototype(state,registry,[[left],[right]],trainerSetup);
 }
 
 /** Additional local encounter participants. Trainer stats are explicit prototype defaults. */
-export function startGroupPrototype(state:EncounterState,registry:GameDataRegistry,sides:readonly (readonly (RosterEntry|string)[])[]){
+export function startGroupPrototype(state:EncounterState,registry:GameDataRegistry,sides:readonly (readonly (RosterEntry|string)[])[],trainerSetup?:TrainerSetup){
  if(state.rules.rollMode==='manual'||state.rules.weather||state.rules.terrain)throw new Error('Unsupported prototype rules');
  if(sides.length!==2||sides.some(s=>!s.length||s.length>6))throw new Error('Select 1–6 Pokémon per side');
+ if(trainerSetup&&(!Number.isSafeInteger(trainerSetup.potions)||trainerSetup.potions<0))throw new Error('Invalid potion count');
  const trainers=new Map<string,string>();let index=0;
  for(const [side,entries] of sides.entries())for(const [row,entry] of entries.entries()){
  const sideId=`side-${side}`;const x=side*5;const y=row*5;index++;
@@ -35,7 +37,7 @@ export function startGroupPrototype(state:EncounterState,registry:GameDataRegist
  }else{
  const existing=trainers.get(entry.trainerId);if(existing&&existing!==sideId)throw new Error('Trainer cannot join opposing sides');
  const trainerId=`trainer-${entry.trainerId}`;
- if(!existing){trainers.set(entry.trainerId,sideId);state=registerCombatant(state,{id:trainerId,kind:'trainer',sideId,name:entry.trainerName,level:1,abilityScores:{str:10,dex:10,con:10,int:10,wis:10,cha:10},armorClass:10,maximumHP:10,currentHP:10,temporaryHP:0,speed:{walking:30},position:{x:side===0?-5:10,y,elevation:0}},state.version);}
+ if(!existing){trainers.set(entry.trainerId,sideId);state=registerCombatant(state,{id:trainerId,kind:'trainer',sideId,name:entry.trainerName,temporaryHP:0,... (trainerSetup?{level:trainerSetup.level,armorClass:trainerSetup.armorClass,maximumHP:trainerSetup.maximumHP,currentHP:trainerSetup.maximumHP,abilityScores:trainerSetup.abilityScores,speed:{walking:trainerSetup.walking},potions:trainerSetup.potions}:{level:1,abilityScores:{str:10,dex:10,con:10,int:10,wis:10,cha:10},armorClass:10,maximumHP:10,currentHP:10,speed:{walking:30},potions:0}),campaignCharacterId:entry.trainerId,position:{x:side===0?-5:10,y,elevation:0}},state.version);}
  state=registerCombatant(state,{...rosterCombatant(entry,registry,sideId,x),position:{x,y,elevation:0},trainerId},state.version);
  }
  }

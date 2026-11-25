@@ -14,9 +14,10 @@ export function startPrototype(state:EncounterState,registry:GameDataRegistry,id
  }
  return startEncounter(state,state.version);
 }
-export function prototypeAction(state:EncounterState,registry:GameDataRegistry,moveId?:string){
+export function prototypeAction(state:EncounterState,registry:GameDataRegistry,moveId?:string,selectedActor?:string,selectedTarget?:string){
  if(state.status!=='active'||!state.turn)throw new Error('Battle is not active');
- const actorId=state.initiative[state.turn.slotIndex].combatantIds[0];const target=state.combatants.find(c=>c.id!==actorId&&c.currentHP>0);if(!target)throw new Error('No target');
+ const slot=state.initiative[state.turn.slotIndex];const actorId=selectedActor??slot.combatantIds[0];if(!slot.combatantIds.includes(actorId))throw new Error('Wrong turn');const actor=state.combatants.find(c=>c.id===actorId)!;
  if(!moveId)return {state:advanceBattleTurn(state,state.version,actorId,{},registry),message:'Turn ended'};
- const r=useBattleMove(state,state.version,registry,{actorId,targetId:target.id,moveId});return {state:r.state,message:`${state.combatants.find(c=>c.id===actorId)?.name} used ${registry.getMove(moveId)?.name??moveId}: ${r.attack?`roll ${r.attack.roll.natural}, ${r.attack.hit?`${r.amount} damage`:'miss'}`:'action forfeited'}`};
+ const target=state.combatants.find(c=>c.kind==='pokemon'&&c.deployment==='active'&&c.sideId!==actor.sideId&&c.currentHP>0&&(!selectedTarget||c.id===selectedTarget));if(!target)throw new Error('No opposing target');
+ const r=useBattleMove(state,state.version,registry,{actorId,targetId:target.id,moveId});return {state:r.state,message:`${state.combatants.find(c=>c.id===actorId)?.name} used ${registry.getMove(moveId)?.name??moveId}: ${'save' in r&&r.save?`WIS save ${r.save.roll.total} vs DC ${r.save.dc}: ${r.save.success?'success':'failed'}`:r.attack?`roll ${r.attack.roll.rolls.length>1?`[${r.attack.roll.rolls.join(", ")}] (${r.attack.roll.condition}, selected ${r.attack.roll.natural})`:r.attack.roll.natural} + (${r.attack.roll.modifier}) = ${r.attack.roll.total} vs AC ${target.armorClass}, ${r.attack.hit?`${r.amount} damage${r.damage?` (subtotal ${r.damage.subtotal}, type ×${r.damage.multiplier})`:''}`:'miss'}`:'action forfeited'}`};
 }

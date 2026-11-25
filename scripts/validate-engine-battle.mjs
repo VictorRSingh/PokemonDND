@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {createRequire} from 'node:module';
 const dir=mkdtempSync(join(tmpdir(),'battle-'));const require=createRequire(import.meta.url);
 try{
-execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts','src/engine/core/roster-prototype.ts','src/engine/core/tactical-prototype.ts'],{stdio:'inherit'});
+execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts','src/engine/core/roster-prototype.ts','src/engine/core/tactical-prototype.ts','src/engine/core/manual-prototype.ts','src/engine/core/trainer-prototype.ts'],{stdio:'inherit'});
 const e=require(join(dir,'core/index.js')),d=require(join(dir,'data/index.js'));
 const path=process.argv[2]??'public/data';const read=n=>JSON.parse(readFileSync(join(path,n+'.json'),'utf8'));const registry=d.createGameDataRegistry(read('pokemon_master_list'),read('move_list'),read('nature_list'));
 assert.equal(e.resolveAttack(e.recordManualD20(30,[1]),1).hit,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[19]),30,19).critical,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[20]),30).critical,true);assert.equal(e.resolveSave(e.recordManualD20(0,[20]),21).success,false);
@@ -284,6 +284,28 @@ const reacted=tactical.tacticalStep(reactionGrid,registry,'a',pos(-5),false,[{ac
 assert.equal(reacted.state.reactionAvailable.b,false);
 assert.equal(reacted.state.turn.movementRemaining.a,25);
 assert.throws(()=>tactical.tacticalStep({...reactionGrid,turn:{...reactionGrid.turn,movementRemaining:{a:0}}},registry,'a',pos(-5),true),/Insufficient movement/);
+for(const moveId of ['growl','leer','tail-whip']){
+ const setup={...reactionGrid,combatants:reactionGrid.combatants.map(c=>c.id==='a'?{...c,pokemon:{...c.pokemon,learnedMoves:[{moveId,pp:{kind:'limited',remaining:3}}]}}:c)};
+ const result=e.useBattleMove(setup,setup.version,registry,{actorId:'a',targetId:'b',moveId,manualAttack:[1]});
+ assert.equal(result.save.success,false);assert.equal(result.state.combatants[1].modifiers[0].kind,moveId);assert.equal(result.state.combatants[0].pokemon.learnedMoves[0].pp.remaining,2);assert.equal(result.state.turn.resources.actionAvailable,false);
+ assert.equal(e.useBattleMove(setup,setup.version,registry,{actorId:'a',targetId:'b',moveId,manualAttack:[20]}).save.success,true);
+}
+const dodged=tactical.tacticalAction(reactionGrid,'a','dodge').state;assert.equal(dodged.combatants[0].dodging,true);assert.equal(dodged.turn.resources.actionAvailable,false);
+const dm=require(join(dir,'core/manual-prototype.js'));const ruling=dm.manualPrototype(reactionGrid,'a','b','ember',3,'DM adjudication');assert.equal(ruling.state.combatants[1].currentHP,17);assert.equal(ruling.state.turn.resources.actionAvailable,false);
+const tr=require(join(dir,'core/trainer-prototype.js'));const tid='trainer-'+saved.trainerId;
+const trainerState={...group,rules:{...group.rules,rollMode:'automatic',trainerParticipation:true},turn:{...group.turn,slotIndex:group.initiative.findIndex(x=>x.combatantIds.includes(tid)),resources:{actionAvailable:true,bonusActionAvailable:true}},combatants:group.combatants.map(c=>c.id===tid?{...c,potions:2}:c.id===saved.id?{...c,currentHP:c.maximumHP-1}:c)};
+const healed=tr.trainerAction(trainerState,tid,saved.id,'potion').state;assert.equal(healed.combatants.find(c=>c.id===tid).potions,1);assert.equal(healed.combatants.find(c=>c.id===saved.id).currentHP,healed.combatants.find(c=>c.id===saved.id).maximumHP);assert.equal(healed.turn.resources.actionAvailable,false);
+assert.equal(tr.trainerAction(trainerState,tid,saved.id,'help').state.combatants.find(c=>c.id===saved.id).helped,true);
+assert.throws(()=>tr.trainerAction(trainerState,tid,saved.id,'attack'));
+const config={level:1,armorClass:12,maximumHP:15,abilityScores:{str:10,dex:10,con:10,int:10,wis:10,cha:10},walking:30,potions:3};
+for(const count of [0,3]){const configured=rosterProto.startRosterPrototype(setup,registry,saved,'bulbasaur',{...config,potions:count}).state;assert.equal(configured.combatants.find(c=>c.kind==='trainer').potions,count);}
+assert.equal(tr.trainerActionReason(trainerState,tid,saved.id,'potion'),undefined);
+assert.match(tr.trainerActionReason(healed,tid,saved.id,'potion'),/Action already spent/);
+assert.match(tr.trainerActionReason({...trainerState,combatants:trainerState.combatants.map(c=>c.id===tid?{...c,potions:0}:c)},tid,saved.id,'potion'),/No potions/);
+assert.match(tr.trainerActionReason({...trainerState,combatants:trainerState.combatants.map(c=>c.id===saved.id?{...c,currentHP:c.maximumHP}:c)},tid,saved.id,'potion'),/full HP/);
+console.log('Trainer inventory and action eligibility validation passed');
+console.log('Trainer actions validation passed');
+console.log('Expanded actions validation passed');
 console.log('Tactical actions and reaction selection passed');
 console.log('Tactical movement and range validation passed');
 console.log('Group initiative and target validation passed');

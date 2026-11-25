@@ -1,0 +1,2 @@
+# Trainer usability correction
+Normal roster setup now forwards the same trainer configuration as group setup. Zero is an intentional inventory value; the UI defaults to two potions. Trainer actions share eligibility checks with the UI, which displays target distance, HP, healing preview and disabled reasons. Combat, Support and Inventory categories separate trainer-specific actions. Pokémon attack logs show both dice when rolled. Inventory remains encounter-local; Help and potion mechanics remain prototype rules.
