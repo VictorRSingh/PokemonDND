@@ -33,5 +33,20 @@ for(let i=0;i<3;i++){clock=e.advanceBattleTurn(clock,clock.version,'b');clock=e.
 assert.equal(clock.combatants[0].volatile.length,0);assert.equal(clock.combatants[0].statusGrace.confused,1);assert.equal(e.applyVolatile(clock.combatants[0],'confused','b',4),clock.combatants[0]);
 clock=e.advanceBattleTurn(clock,clock.version,'b');clock=e.advanceBattleTurn(clock,clock.version,'a');assert.equal(clock.combatants[0].statusGrace.confused,undefined);assert.equal(e.applyVolatile(clock.combatants[0],'confused','b',5).volatile.length,1);
 const cleared=e.useBattleMove(confusedState,confusedState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualConfusion:16,manualAttack:[1]}).state;assert.equal(cleared.combatants[0].statusGrace.confused,2);const afterClear=e.advanceBattleTurn(cleared,cleared.version,'a');assert.equal(afterClear.combatants[0].statusGrace.confused,1);
+// Frozen recovery uses STR, source proficiency, and species save proficiency.
+const ice={...before,combatants:before.combatants.map(c=>c.id==='a'?{...c,abilityScores:{...c.abilityScores,str:10},nonvolatile:{kind:'frozen',sourceId:'b',appliedRound:1}}:c)};
+const proficient=registry.getSpecies(a.pokemon.speciesId).savingThrows.includes('str');
+const threshold=10+e.getProficiencyBonus(b.level)-(proficient?e.getProficiencyBonus(a.level):0);
+const thaw=(rolls,state=ice)=>e.advanceBattleTurn(state,state.version,'a',{a:rolls},registry);
+assert.equal(thaw({frozen:threshold}).combatants[0].nonvolatile,undefined);
+assert.equal(thaw({frozen:threshold-1}).combatants[0].nonvolatile.kind,'frozen');
+assert.equal(thaw({frozen:threshold}).combatants[0].statusGrace.frozen,1);
+assert.throws(()=>thaw({frozen:21}));assert.throws(()=>thaw({}));
+assert.equal(thaw({frozen:[1,20],frozenSources:{advantage:['test']}}).combatants[0].nonvolatile,undefined);
+const flinchedIce={...ice,combatants:ice.combatants.map(c=>c.id==='a'?{...c,volatile:[{kind:'flinched',appliedRound:1}]}:c)};
+assert.equal(thaw({frozen:[1,20]},flinchedIce).combatants[0].nonvolatile.kind,'frozen');
+assert.throws(()=>thaw({frozen:20},flinchedIce));
+assert.equal(thaw({frozen:20,frozenSources:{advantage:['test']}},flinchedIce).combatants[0].nonvolatile,undefined);
+for(const mode of ['automatic','digital']){const state={...ice,rules:{...ice.rules,rollMode:mode}};assert.deepEqual(thaw({},state),thaw({},state));assert.throws(()=>thaw({frozen:20},state));}
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
