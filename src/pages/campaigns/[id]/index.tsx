@@ -29,6 +29,6 @@ function CampaignDetails({id}:{id:string}){
  {c.ownerId===data.entry.membership.userId&&<CampaignAdmin key={`${id}:${retry}`} entry={data.entry} members={data.members} onRefresh={()=>{setData(null);setError('');setRetry(v=>v+1)}}/>}
  {c.playMode==='multiplayer'&&(c.ownerId===data.entry.membership.userId||(data.entry.membership.isDm&&c.dmMode!=='automated')||(data.entry.membership.isPlayer&&c.settings.allowPlayerInvites))&&<Invitations id={id}/>}
  {data.entry.membership.isPlayer&&<CampaignCharacter id={id} policy={c.settings.characterImportPolicy} active={c.status==='active'}/>}
- <section className="mt-6 rounded-xl border border-dashed border-slate-700 p-6"><h2 className="text-lg font-bold">Campaign gameplay</h2><p className="mt-2 text-slate-400">Encounters and gameplay will be introduced in later phases.</p></section></>}
+ <section className="mt-6 rounded-xl border border-dashed border-slate-700 p-6"><h2 className="text-lg font-bold">Campaign gameplay</h2><p className="mt-2 text-slate-400">Launch a local DM-controlled battle prototype.</p>{c.status==='active'&&(c.ownerId===data.entry.membership.userId||(data.entry.membership.isDm&&c.dmMode!=='automated'))&&<Link className="btn btn-primary mt-4" href={`/campaigns/${id}/battle`}>Launch battle prototype</Link>}</section></>}
  </div>;
 }

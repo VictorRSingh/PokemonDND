@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {createRequire} from 'node:module';
 const dir=mkdtempSync(join(tmpdir(),'battle-'));const require=createRequire(import.meta.url);
 try{
-execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts'],{stdio:'inherit'});
+execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts'],{stdio:'inherit'});
 const e=require(join(dir,'core/index.js')),d=require(join(dir,'data/index.js'));
 const path=process.argv[2]??'public/data';const read=n=>JSON.parse(readFileSync(join(path,n+'.json'),'utf8'));const registry=d.createGameDataRegistry(read('pokemon_master_list'),read('move_list'),read('nature_list'));
 assert.equal(e.resolveAttack(e.recordManualD20(30,[1]),1).hit,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[19]),30,19).critical,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[20]),30).critical,true);assert.equal(e.resolveSave(e.recordManualD20(0,[20]),21).success,false);
@@ -221,5 +221,11 @@ for(const mode of ['automatic','digital','manual']){
 }
 assert.notDeepEqual(campaignReplay('automatic',42),campaignReplay('automatic',43));
 console.log('Campaign end-to-end and deterministic replay passed');
+const proto=require(join(dir,'core/prototype.js'));
+assert.ok(proto.prototypeChoices(registry).some(x=>x.id==='charmander'));
+let demo=proto.startPrototype(e.createCampaignEncounter({id:'demo',status:'active',settings:{defaultActivePokemonLimit:1}},'demo','wild',42),registry,['charmander','bulbasaur']).state;
+for(let i=0;i<100&&demo.status==='active';i++){const actor=demo.combatants.find(c=>c.id===demo.initiative[demo.turn.slotIndex].combatantIds[0]);const move=actor.pokemon.learnedMoves.find(m=>m.pp.kind==='unlimited'||m.pp.remaining>0)?.moveId??'struggle';demo=proto.prototypeAction(demo,registry,move).state;if(demo.status==='active')demo=proto.prototypeAction(demo,registry).state;}
+assert.equal(demo.status,'completed');
+console.log('Prototype battle passed');
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
