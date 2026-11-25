@@ -156,5 +156,22 @@ assert.deepEqual(e.evaluateAbility({...context,hook:'turn-end'},registry,effects
 assert.throws(()=>e.createAbilityEffectRegistry([handler,handler]));
 assert.equal(Object.isFrozen(effects.get(abilityId).hooks),true);
 assert.deepEqual(e.evaluateAbility({...context,owner:{...owner,deployment:'recalled'}},registry,effects),[]);
+// Passive abilities: use actual species definitions, not invented ability ownership.
+const passiveOwner=(speciesId,abilityId)=>({...b,pokemon:{...b.pokemon,speciesId,abilityId}});
+const fat=passiveOwner('snorlax','thick-fat');
+const fatState={...abilityState,combatants:[a,fat]};
+assert.deepEqual(e.evaluateAbility({hook:'before-damage',state:fatState,owner:fat,damageType:'fire'},registry),[{kind:'damage-multiplier',multiplier:0.5}]);
+const fireInput={actorId:'a',targetId:'b',moveId:'ember',manualAttack:[19],manualDamage:[[8]]};
+const fatHit=e.useBattleMove(fatState,fatState.version,registry,fireInput);
+const plainHit=e.useBattleMove({...fatState,rules:{...fatState.rules,abilities:false}},fatState.version,registry,fireInput);
+assert.equal(fatHit.amount,Math.floor(plainHit.amount/2));
+assert.equal(fatHit.damage.amount,fatHit.amount);
+const veil=passiveOwner('goldeen','water-veil');
+assert.equal(e.applyNonvolatile(veil,'burned','a',1,registry,abilityState),veil);
+assert.equal(e.applyNonvolatile(veil,'burned','a',1,registry,before).nonvolatile.kind,'burned');
+const tempo=passiveOwner('slowpoke','own-tempo');
+assert.equal(e.applyVolatile(tempo,'confused','a',1,abilityState,registry),tempo);
+const levitate=passiveOwner('gastly','levitate');
+assert.deepEqual(e.evaluateAbility({hook:'before-damage',state:abilityState,owner:levitate,damageType:'ground'},registry),[{kind:'damage-multiplier',multiplier:0}]);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}

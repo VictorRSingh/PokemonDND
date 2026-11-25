@@ -1,8 +1,8 @@
 import type { GameDataRegistry } from '../data/registry';
-import type { AbilityDefinition } from '../data/types';
-import type { EncounterState, PokemonCombatant } from './types';
+import type { AbilityDefinition, DamageType } from '../data/types';
+import type { EncounterState, PokemonCombatant, NonvolatileStatus, VolatileStatus } from './types';
 
-export type AbilityHook = 'before-attack' | 'before-damage' | 'after-damage' | 'turn-start' | 'turn-end' | 'switch-in' | 'switch-out';
+export type AbilityHook = 'before-attack' | 'before-damage' | 'after-damage' | 'turn-start' | 'turn-end' | 'switch-in' | 'switch-out' | 'before-status';
 export interface AbilityContext {
  readonly hook: AbilityHook;
  readonly state: EncounterState;
@@ -10,8 +10,10 @@ export interface AbilityContext {
  readonly counterpart?: PokemonCombatant;
  readonly moveId?: string;
  readonly amount?: number;
+ readonly damageType?: DamageType;
+ readonly status?: NonvolatileStatus | VolatileStatus;
 }
-export type AbilityEffect = { readonly kind: 'note'; readonly message: string } | { readonly kind: 'manual'; readonly reason: string };
+export type AbilityEffect = { readonly kind: 'note'; readonly message: string } | { readonly kind: 'manual'; readonly reason: string } | { readonly kind: 'damage-multiplier'; readonly multiplier: 0 | 0.5 } | { readonly kind: 'status-immunity' };
 export interface AbilityHandler {
  readonly id: string;
  readonly hooks: readonly AbilityHook[];
@@ -27,7 +29,23 @@ export function createAbilityEffectRegistry(handlers: readonly AbilityHandler[] 
  return Object.freeze({get: (id: string) => entries.get(id), ids: Object.freeze([...entries.keys()])});
 }
 export type AbilityEffectRegistry = ReturnType<typeof createAbilityEffectRegistry>;
-export const defaultAbilityEffects = createAbilityEffectRegistry();
+const passive = (id: string, statuses: readonly (NonvolatileStatus | VolatileStatus)[], damageTypes: readonly DamageType[] = [], multiplier: 0 | 0.5 = 0): AbilityHandler => ({
+ id, hooks: ['before-status', 'before-damage'], execute: context => {
+  if (context.hook === 'before-status' && context.status && statuses.includes(context.status)) return [{kind:'status-immunity'}];
+  if (context.hook === 'before-damage' && context.damageType && damageTypes.includes(context.damageType)) return [{kind:'damage-multiplier', multiplier}];
+  return [];
+ }
+});
+export const defaultAbilityEffects = createAbilityEffectRegistry([
+ passive('levitate', [], ['ground']), passive('thick-fat', [], ['fire','ice'], 0.5),
+ passive('heatproof', ['burned'], ['fire'], 0.5), passive('water-veil', ['burned']),
+ passive('immunity', ['poisoned']), passive('magma-armor', ['frozen']), passive('limber', ['paralyzed']),
+ passive('insomnia', ['asleep']), passive('vital-spirit', ['asleep']), passive('own-tempo', ['confused']), passive('inner-focus', ['flinched'])
+]);
+export function passiveStatusImmune(state: EncounterState, owner: PokemonCombatant, status: NonvolatileStatus | VolatileStatus, data: GameDataRegistry): boolean {
+ return evaluateAbility({hook:'before-status',state,owner,status},data).some(effect=>effect.kind==='status-immunity');
+}
+
 export function evaluateAbility(context: AbilityContext, data: GameDataRegistry, effects: AbilityEffectRegistry = defaultAbilityEffects): readonly AbilityEffect[] {
  const {state, owner} = context;
  const id = owner.pokemon.abilityId;
