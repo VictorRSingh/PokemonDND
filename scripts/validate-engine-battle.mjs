@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {createRequire} from 'node:module';
 const dir=mkdtempSync(join(tmpdir(),'battle-'));const require=createRequire(import.meta.url);
 try{
-execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts'],{stdio:'inherit'});
+execFileSync(process.execPath,[require.resolve('typescript/bin/tsc'),'--strict','--skipLibCheck','--target','es2020','--module','commonjs','--outDir',dir,'src/engine/core/index.ts','src/engine/data/index.ts','src/engine/core/prototype.ts','src/engine/core/roster-prototype.ts'],{stdio:'inherit'});
 const e=require(join(dir,'core/index.js')),d=require(join(dir,'data/index.js'));
 const path=process.argv[2]??'public/data';const read=n=>JSON.parse(readFileSync(join(path,n+'.json'),'utf8'));const registry=d.createGameDataRegistry(read('pokemon_master_list'),read('move_list'),read('nature_list'));
 assert.equal(e.resolveAttack(e.recordManualD20(30,[1]),1).hit,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[19]),30,19).critical,false);assert.equal(e.resolveAttack(e.recordManualD20(0,[20]),30).critical,true);assert.equal(e.resolveSave(e.recordManualD20(0,[20]),21).success,false);
@@ -142,19 +142,19 @@ assert.deepEqual(e.battleOutcome(terminated),{finished:true,winner:null});
 const reserveAlive={...before,combatants:[...before.combatants.map(c=>c.id==='b'?{...c,currentHP:0}:c),{...before.combatants[1],id:'b-reserve',deployment:'recalled'}]};
 assert.equal(e.battleOutcome(reserveAlive).finished,false);
 // Ability framework: opt-out, unsupported fallback, hook dispatch and immutable registry.
-const abilityId=registry.getSpecies(a.pokemon.speciesId).abilityIds[0];
+const abilityId='unsupported-test';
 const owner={...a,pokemon:{...a.pokemon,abilityId}};
 const abilityState={...before,rules:{...before.rules,abilities:true},combatants:[owner,b]};
 const context={hook:'before-attack',state:abilityState,owner,counterpart:b,moveId:'ember'};
 assert.equal(e.evaluateAbility(context,registry)[0].kind,'manual');
 assert.deepEqual(e.evaluateAbility({...context,state:before},registry),[]);
 assert.throws(()=>e.useBattleMove(abilityState,abilityState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualAttack:[1]}),/Unsupported ability/);
-const handler={id:abilityId,hooks:['before-attack'],execute:(ctx,definition)=>[{kind:'note',message:definition.id+':'+ctx.moveId}]};
+const handler={id:'blaze',hooks:['before-attack'],execute:(ctx,definition)=>[{kind:'note',message:definition.id+':'+ctx.moveId}]};
 const effects=e.createAbilityEffectRegistry([handler]);
-assert.deepEqual(e.evaluateAbility(context,registry,effects),[{kind:'note',message:abilityId+':ember'}]);
-assert.deepEqual(e.evaluateAbility({...context,hook:'turn-end'},registry,effects),[]);
+assert.deepEqual(e.evaluateAbility({...context,owner:{...owner,pokemon:{...owner.pokemon,abilityId:'blaze'}}},registry,effects),[{kind:'note',message:'blaze:ember'}]);
+assert.deepEqual(e.evaluateAbility({...context,hook:'turn-end',owner:{...owner,pokemon:{...owner.pokemon,abilityId:'blaze'}}},registry,effects),[]);
 assert.throws(()=>e.createAbilityEffectRegistry([handler,handler]));
-assert.equal(Object.isFrozen(effects.get(abilityId).hooks),true);
+assert.equal(Object.isFrozen(effects.get('blaze').hooks),true);
 assert.deepEqual(e.evaluateAbility({...context,owner:{...owner,deployment:'recalled'}},registry,effects),[]);
 // Passive abilities: use actual species definitions, not invented ability ownership.
 const passiveOwner=(speciesId,abilityId)=>({...b,pokemon:{...b.pokemon,speciesId,abilityId}});
@@ -226,6 +226,33 @@ assert.ok(proto.prototypeChoices(registry).some(x=>x.id==='charmander'));
 let demo=proto.startPrototype(e.createCampaignEncounter({id:'demo',status:'active',settings:{defaultActivePokemonLimit:1}},'demo','wild',42),registry,['charmander','bulbasaur']).state;
 for(let i=0;i<100&&demo.status==='active';i++){const actor=demo.combatants.find(c=>c.id===demo.initiative[demo.turn.slotIndex].combatantIds[0]);const move=actor.pokemon.learnedMoves.find(m=>m.pp.kind==='unlimited'||m.pp.remaining>0)?.moveId??'struggle';demo=proto.prototypeAction(demo,registry,move).state;if(demo.status==='active')demo=proto.prototypeAction(demo,registry).state;}
 assert.equal(demo.status,'completed');
+const rosterProto=require(join(dir,'core/roster-prototype.js'));
+const saved={id:'saved-1',trainerId:'trainer-1',trainerName:'Ash',name:'Charmander',number:4,data:{given_name:'Flame',current_level:5,level:1,armor_class:14,hit_points:40,current_hit_points:27,stats:Object.fromEntries(Object.entries(registry.getSpecies('charmander').abilityScores).map(([k,value])=>[k,{value}])),selected_moves:['Scratch','Ember'],selected_ability:'Blaze'}};
+const setup=e.createCampaignEncounter({id:'demo',status:'active',settings:{defaultActivePokemonLimit:1}},'roster','wild',42);
+const rosterState=rosterProto.startRosterPrototype(setup,registry,saved,'bulbasaur').state;
+const flame=rosterState.combatants.find(c=>c.id===saved.id);
+assert.equal(flame.name,'Flame');assert.equal(flame.level,5);assert.equal(flame.currentHP,27);assert.equal(flame.maximumHP,40);assert.equal(flame.armorClass,14);assert.equal(flame.pokemon.abilityId,'blaze');assert.equal(flame.pokemon.learnedMoves.length,2);
+assert.throws(()=>rosterProto.startRosterPrototype(setup,registry,saved,saved));
+assert.throws(()=>rosterProto.startRosterPrototype(setup,registry,{...saved,data:{...saved.data,current_hit_points:0}},'bulbasaur'));
+assert.equal(saved.data.current_hit_points,27);
+// Starter abilities must not block ordinary attacks, and only double matching STAB below 25%.
+for(const [id,type,speciesId] of [['blaze','fire','charmander'],['overgrow','grass','bulbasaur'],['torrent','water','squirtle']]){
+ const p={...a,pokemon:{...a.pokemon,speciesId,abilityId:id}};
+ for(const [hp,expected] of [[4,true],[5,false],[20,false]]){
+  const ctx={hook:'before-attack',state:abilityState,owner:{...p,currentHP:hp},damageType:type};
+  assert.equal(e.evaluateAbility(ctx,registry).some(x=>x.kind==='double-stab'),expected);
+  assert.deepEqual(e.evaluateAbility({...ctx,damageType:'normal'},registry),[]);
+ }
+}
+const boostedState={...before,rules:{...before.rules,abilities:true},combatants:[{...a,currentHP:4,pokemon:{...a.pokemon,abilityId:'blaze'}},b]};
+const boosted=e.useBattleMove(boostedState,boostedState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualAttack:[15],manualDamage:[[1]]});
+const normal=e.useBattleMove({...boostedState,rules:{...boostedState.rules,abilities:false}},boostedState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualAttack:[15],manualDamage:[[1]]});
+assert.equal(boosted.damage.subtotal-normal.damage.subtotal,e.getStabBonus(a.level));
+let live=rosterState;
+for(let i=0;i<100&&live.status==='active';i++){const actor=live.combatants.find(c=>c.id===live.initiative[live.turn.slotIndex].combatantIds[0]);const move=actor.pokemon.learnedMoves.find(m=>e.supportedBattleMoves().includes(m.moveId)&&m.pp.remaining>0)?.moveId??'struggle';live=proto.prototypeAction(live,registry,move).state;if(live.status==='active')live=proto.prototypeAction(live,registry).state;}
+assert.equal(live.status,'completed');
+console.log('Starter ability and roster battle validation passed');
+console.log('Roster snapshot validation passed');
 console.log('Prototype battle passed');
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}

@@ -16,7 +16,7 @@ export interface AbilityContext {
  readonly damageType?: DamageType;
  readonly status?: NonvolatileStatus | VolatileStatus;
 }
-export type AbilityEffect = { readonly kind: 'note'; readonly message: string } | { readonly kind: 'manual'; readonly reason: string } | { readonly kind: 'damage-multiplier'; readonly multiplier: 0 | 0.5 } | { readonly kind: 'status-immunity' } | { readonly kind: 'retaliation'; readonly amount: number; readonly damageType: DamageType; readonly roll?: 4; readonly optional?: boolean };
+export type AbilityEffect = { readonly kind: 'note'; readonly message: string } | { readonly kind: 'manual'; readonly reason: string } | { readonly kind: 'damage-multiplier'; readonly multiplier: 0 | 0.5 } | { readonly kind: 'double-stab' } | { readonly kind: 'status-immunity' } | { readonly kind: 'retaliation'; readonly amount: number; readonly damageType: DamageType; readonly roll?: 4; readonly optional?: boolean };
 export interface AbilityHandler {
  readonly id: string;
  readonly hooks: readonly AbilityHook[];
@@ -42,7 +42,11 @@ const passive = (id: string, statuses: readonly (NonvolatileStatus | VolatileSta
 const retaliation = (id: string, damageType: DamageType, optional = false): AbilityHandler => ({
  id, hooks:['after-damage'], execute: c => c.melee && !c.knockedOut ? [{kind:'retaliation',amount:getProficiencyBonus(c.owner.level),damageType,roll:4,optional}] : []
 });
+const starterBoost = (id: string, type: DamageType): AbilityHandler => ({
+ id, hooks:['before-attack'], execute:c=>c.damageType===type && c.owner.currentHP*4<c.owner.maximumHP ? [{kind:'double-stab'}] : []
+});
 export const defaultAbilityEffects = createAbilityEffectRegistry([
+ starterBoost('blaze','fire'), starterBoost('overgrow','grass'), starterBoost('torrent','water'),
  retaliation('static','electric'), retaliation('rough-skin','typeless',true), retaliation('iron-barbs','typeless',true),
  {id:'aftermath',hooks:['after-damage'],execute:c=>c.melee&&c.knockedOut&&c.amount ? [{kind:'retaliation',amount:Math.floor(c.amount/2),damageType:'typeless'}]:[]},
  passive('levitate', [], ['ground']), passive('thick-fat', [], ['fire','ice'], 0.5),
