@@ -191,5 +191,35 @@ const aftermathState={...abilityState,combatants:[{...meleeActor,currentHP:1},{.
 const blastState={...aftermathState,combatants:[aftermathState.combatants[0],{...passiveOwner('stunky','aftermath'),currentHP:1}]};
 const blast=e.useBattleMove(blastState,blastState.version,registry,meleeInput);
 assert.equal(blast.abilityEvents[0].amount,Math.floor(blast.amount/2));assert.equal(blast.state.result.kind,'draw');
+// Phase 5.12: replay a complete campaign-linked encounter using only public commands.
+function campaignReplay(mode, seed, checkpoint=false){
+ const settings={defaultActivePokemonLimit:1,battleRules:e.createRulesetSnapshot('casual',{rollMode:mode,abilities:false,trackPP:true})};
+ let state=e.createCampaignEncounter({id:'campaign-ready',status:'active',settings},'replay','wild',seed);
+ const trace=[];
+ const record=()=>{trace.push(JSON.parse(JSON.stringify(state)));if(checkpoint)state=JSON.parse(JSON.stringify(state));};
+ for(const c of [a,b]) state=e.registerCombatant(state,{...c,pokemon:{...c.pokemon,learnedMoves:[{moveId:'tackle',pp:{kind:'limited',remaining:20}}]}},state.version);
+ record();
+ state=e.startEncounter(state,state.version,mode==='manual'?{a:20,b:1}:undefined).state;record();
+ for(let step=0;state.status==='active'&&step<40;step++){
+  const actorId=state.initiative[state.turn.slotIndex].combatantIds[0],targetId=actorId==='a'?'b':'a';
+  const prior=state, snapshot=JSON.stringify(prior);
+  const input={actorId,targetId,moveId:'tackle',...(mode==='manual'?{manualAttack:[19],manualDamage:[[4]]}:{})};
+  assert.throws(()=>e.useBattleMove(prior,prior.version-1,registry,input));
+  state=e.useBattleMove(prior,prior.version,registry,input).state;
+  assert.equal(JSON.stringify(prior),snapshot);assert.equal(state.version,prior.version+1);record();
+  if(state.status==='active'){assert.throws(()=>e.useBattleMove(state,state.version,registry,input));state=e.advanceBattleTurn(state,state.version,actorId,{},registry);record();}
+ }
+ assert.equal(state.status,'completed');assert.equal(state.result.kind,'victory');assert.equal(state.campaignId,'campaign-ready');
+ assert.equal(state.turn,undefined);assert.ok(Object.values(state.reactionAvailable).every(x=>!x));
+ assert.throws(()=>e.advanceBattleTurn(state,state.version,'a'));
+ return trace;
+}
+for(const mode of ['automatic','digital','manual']){
+ const trace=campaignReplay(mode,42);
+ assert.deepEqual(campaignReplay(mode,42),trace);
+ assert.deepEqual(campaignReplay(mode,42,true),trace);
+}
+assert.notDeepEqual(campaignReplay('automatic',42),campaignReplay('automatic',43));
+console.log('Campaign end-to-end and deterministic replay passed');
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
