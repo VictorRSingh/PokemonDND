@@ -59,5 +59,18 @@ assert.equal(e.moveOnGrid(safe,safe.version,'a',{x:-5,y:0,elevation:0}).combatan
 const nextSafe=e.advanceBattleTurn(safeMove.state,safeMove.state.version,'a');assert.equal(nextSafe.turn.disengagedIds,undefined);
 assert.throws(()=>e.disengageBattlePokemon(sleeping,sleeping.version,'a'));
 for(const mode of ['automatic','digital']){const state={...reactionGrid,rules:{...reactionGrid.rules,rollMode:mode}};assert.equal(e.disengageBattlePokemon(state,state.version,'a').turn.resources.actionAvailable,false);}
+// Path enters reach, then leaves it; endpoint-only detection would miss this.
+const pos=(x,y=0)=>({x,y,elevation:0});
+const pathGrid={...reactionGrid,combatants:reactionGrid.combatants.map(c=>c.id==='a'?{...c,position:pos(-5)}:c)};
+const route=[pos(0),pos(0,5),pos(0,10)];
+const traversal=e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',route[2],{b:5},[{actorId:'b',moveId:'tackle',manualAttack:[1]}],route);
+assert.equal(traversal.reactions.length,1);assert.equal(traversal.state.turn.movementRemaining.a,15);assert.deepEqual(traversal.state.combatants[0].position,route[2]);assert.equal(traversal.state.version,pathGrid.version+1);
+const fragile={...pathGrid,combatants:pathGrid.combatants.map(c=>c.id==='a'?{...c,currentHP:1}:c)};
+const stopped=e.moveWithOpportunity(fragile,fragile.version,registry,'a',route[2],{b:5},[{actorId:'b',moveId:'tackle',manualAttack:[20],manualDamage:[[10,10]]}],route);
+assert.equal(stopped.state.status,'completed');assert.deepEqual(stopped.state.combatants[0].position,route[1]);assert.equal(stopped.state.version,fragile.version+1);
+assert.throws(()=>e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',route[2],{b:5},[],[route[2]]),/adjacent/);
+assert.throws(()=>e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',pos(5),{b:5},[],[pos(0),pos(5)]),/Occupied/);
+assert.throws(()=>e.moveWithOpportunity(pathGrid,pathGrid.version,registry,'a',route[2],{b:5},[],[route[0]]),/destination/);
+assert.deepEqual(pathGrid.combatants[0].position,pos(-5));
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
