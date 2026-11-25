@@ -1,0 +1,3 @@
+# Ability execution framework (5.11.1)
+
+The registry dispatches pure handlers by canonical ability ID and typed hook. The game data registry supplies species-specific descriptions. Disabled abilities, disabled hidden abilities, recalled and fainted owners do not execute. Unknown or unimplemented abilities require manual resolution rather than silently changing combat. The battle move preflight uses the default empty registry before spending resources. Other hook types are contracts only; later patches will wire them and add actual effects. No ability is automatically implemented by this patch. Handler purity is a contract, not sandbox enforcement.

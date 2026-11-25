@@ -1,3 +1,4 @@
+import { evaluateAbility } from './ability-effects';
 import { faintedReplacementOptions } from './battle-completion';
 import type { GameDataRegistry } from '../data/registry';
 import type { AbilityKey, DamageType } from '../data/types';
@@ -30,7 +31,7 @@ export function battleOutcome(s:EncounterState){if(s.status==='completed'&&s.res
 function executeBattleMove(s:EncounterState,v:number,registry:GameDataRegistry,input:{actorId:string;targetId:string;moveId:string;movePower?:AbilityKey;manualAttack?:readonly number[];manualDamage?:readonly (readonly number[])[];manualConfusion?:number;reaction?:boolean;manualSleep?:number}){
  active(s,v);const actor=pokemon(s,input.actorId),target=pokemon(s,input.targetId);if(actor.sideId===target.sideId)throw new Error('Target must oppose actor');
  const definition=registry.getMove(input.moveId),handler=handlers[input.moveId],struggle=input.moveId==='struggle';if(!definition||(!handler&&!struggle))throw new Error('Manual resolution required: unsupported move');
- if(s.rules.abilities&&(actor.pokemon.abilityId||target.pokemon.abilityId))throw new Error('Manual resolution required: ability effects');if(s.rules.weather||s.rules.terrain)throw new Error('Manual resolution required: environment');
+ for(const [owner,counterpart] of [[actor,target],[target,actor]]){const effects=evaluateAbility({hook:'before-attack',state:s,owner,counterpart,moveId:input.moveId},registry);const manual=effects.find(effect=>effect.kind==='manual');if(manual?.kind==='manual')throw new Error(`Manual resolution required: ${manual.reason}`);}if(s.rules.weather||s.rules.terrain)throw new Error('Manual resolution required: environment');
  if(statusRestrictions(actor).incapacitated||(!input.reaction&&actor.actionForfeited))throw new Error('Incapacitated');if(input.reaction&&(!statusRestrictions(actor).reactions||definition.timing.trim().toLowerCase()!=='1 action'||(!struggle&&(!handler||definition.range.trim().toLowerCase()!=='melee'))))throw new Error('Invalid reaction move');
  const species=registry.getSpecies(actor.pokemon.speciesId),defender=registry.getSpecies(target.pokemon.speciesId);if(!species||!defender)throw new Error('Unknown species');
  const meleeReach=species.size==='huge'||species.size==='gargantuan'?10:5;

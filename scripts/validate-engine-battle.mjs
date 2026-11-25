@@ -141,5 +141,20 @@ assert.deepEqual(terminated.result,{kind:'terminated',winner:null});
 assert.deepEqual(e.battleOutcome(terminated),{finished:true,winner:null});
 const reserveAlive={...before,combatants:[...before.combatants.map(c=>c.id==='b'?{...c,currentHP:0}:c),{...before.combatants[1],id:'b-reserve',deployment:'recalled'}]};
 assert.equal(e.battleOutcome(reserveAlive).finished,false);
+// Ability framework: opt-out, unsupported fallback, hook dispatch and immutable registry.
+const abilityId=registry.getSpecies(a.pokemon.speciesId).abilityIds[0];
+const owner={...a,pokemon:{...a.pokemon,abilityId}};
+const abilityState={...before,rules:{...before.rules,abilities:true},combatants:[owner,b]};
+const context={hook:'before-attack',state:abilityState,owner,counterpart:b,moveId:'ember'};
+assert.equal(e.evaluateAbility(context,registry)[0].kind,'manual');
+assert.deepEqual(e.evaluateAbility({...context,state:before},registry),[]);
+assert.throws(()=>e.useBattleMove(abilityState,abilityState.version,registry,{actorId:'a',targetId:'b',moveId:'ember',manualAttack:[1]}),/Unsupported ability/);
+const handler={id:abilityId,hooks:['before-attack'],execute:(ctx,definition)=>[{kind:'note',message:definition.id+':'+ctx.moveId}]};
+const effects=e.createAbilityEffectRegistry([handler]);
+assert.deepEqual(e.evaluateAbility(context,registry,effects),[{kind:'note',message:abilityId+':ember'}]);
+assert.deepEqual(e.evaluateAbility({...context,hook:'turn-end'},registry,effects),[]);
+assert.throws(()=>e.createAbilityEffectRegistry([handler,handler]));
+assert.equal(Object.isFrozen(effects.get(abilityId).hooks),true);
+assert.deepEqual(e.evaluateAbility({...context,owner:{...owner,deployment:'recalled'}},registry,effects),[]);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}
