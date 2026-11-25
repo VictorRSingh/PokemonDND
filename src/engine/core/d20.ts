@@ -1,4 +1,5 @@
 import { rollDice, recordManualRoll, validateDiceExpression } from './dice';
+import { diceLabel } from './random';
 import type { RandomSource } from './random';
 import type { RollCondition } from './types';
 export interface RollSources { readonly advantage?: readonly string[]; readonly disadvantage?: readonly string[] }
@@ -18,7 +19,7 @@ function finish(p: ReturnType<typeof prepare>, modifier: number, dice: ReturnTyp
 export type D20Result = ReturnType<typeof finish>;
 export function rollD20(modifier: number, random: Pick<RandomSource,'nextInt'>, sources: RollSources = {}, mode: 'automatic' | 'digital' = 'automatic'): D20Result {
   const p = prepare(modifier,sources);
-  return finish(p,modifier,rollDice(p.expression,random,mode));
+  return finish(p,modifier,diceLabel(`${p.condition} d20 (${modifier>=0?'+':''}${modifier})`,()=>rollDice(p.expression,random,mode)));
 }
 export function recordManualD20(modifier: number, rolls: readonly number[], sources: RollSources = {}): D20Result {
   const p = prepare(modifier,sources);
