@@ -114,5 +114,16 @@ const voluntaryFar={...voluntary,combatants:voluntary.combatants.map(c=>c.id==='
 assert.throws(()=>e.switchBattlePokemon(voluntaryFar,voluntaryFar.version,'a','reserve',pos(15,5)),/range/);
 assert.throws(()=>e.switchBattlePokemon({...voluntary,turn:{...voluntary.turn,round:1}},voluntary.version,'a','reserve',pos(15,5)),/Switch unavailable/);
 assert.throws(()=>e.switchBattlePokemon({...voluntary,turn:{...voluntary.turn,resources:{...voluntary.turn.resources,actionAvailable:false}}},voluntary.version,'a','reserve',pos(15,5)),/spent/);
+// Recall preserves persistent conditions and pauses their clocks; a partial turn is not a full status turn.
+const lifecycle={...voluntary,combatants:voluntary.combatants.map(c=>c.id==='a'?{...c,nonvolatile:{kind:'burned',appliedRound:1},volatile:[{kind:'asleep',appliedRound:1,remainingRounds:2},{kind:'confused',appliedRound:1},{kind:'flinched',appliedRound:1}],paralysisBlocked:true,actionForfeited:true}:c.id==='reserve'?{...c,nonvolatile:{kind:'poisoned',appliedRound:1},volatile:[{kind:'asleep',appliedRound:1,remainingRounds:2}],statusGrace:{confused:2},paralysisBlocked:true,actionForfeited:true}:c)};
+const deployed=e.switchBattlePokemon(lifecycle,lifecycle.version,'a','reserve',pos(15,5));
+const get=(state,id)=>state.combatants.find(c=>c.id===id);
+assert.equal(get(deployed,'a').nonvolatile.kind,'burned');assert.deepEqual(get(deployed,'a').volatile.map(x=>x.kind),['asleep']);
+assert.equal(get(deployed,'reserve').paralysisBlocked,false);assert.equal(get(deployed,'reserve').actionForfeited,false);assert.deepEqual(deployed.turn.releasedIds,['reserve']);
+const partial=e.advanceBattleTurn(deployed,deployed.version,'reserve');
+assert.equal(get(partial,'reserve').currentHP,get(deployed,'reserve').currentHP);assert.equal(get(partial,'reserve').volatile[0].remainingRounds,2);assert.equal(get(partial,'reserve').statusGrace.confused,2);assert.equal(partial.turn.releasedIds,undefined);
+const full=e.advanceBattleTurn(partial,partial.version,'b');
+const afterFull=e.advanceBattleTurn(full,full.version,'reserve',{reserve:{sleep:1}});
+assert.equal(get(afterFull,'reserve').currentHP,get(deployed,'reserve').currentHP-3);assert.equal(get(afterFull,'reserve').volatile[0].remainingRounds,1);assert.equal(get(afterFull,'reserve').statusGrace.confused,1);assert.equal(get(afterFull,'a').currentHP,get(deployed,'a').currentHP);assert.equal(get(afterFull,'a').volatile[0].remainingRounds,2);
 console.log('Battle integration passed');
 }finally{rmSync(dir,{recursive:true,force:true});}

@@ -68,6 +68,8 @@ export interface TurnState {
   readonly round: number;
   readonly slotIndex: number;
   readonly resources: TurnResources;
+  /** Pokémon released after this turn started; status ticks begin on their next full turn. */
+  readonly releasedIds?: readonly CombatantId[];
   readonly disengagedIds?: readonly CombatantId[];
   readonly movementRemaining: Readonly<Record<CombatantId, number>>;
 }
