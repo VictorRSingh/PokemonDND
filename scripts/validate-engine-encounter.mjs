@@ -39,6 +39,22 @@ try {
   assert.equal(linkedStarted.campaignId,campaign.id); assert.equal(linkedStarted.initiative.length,2);
   assert.throws(()=>e.spendReaction(linkedStarted,linkedStarted.version,'p'));
   assert.equal(e.resolveCampaignRules({defaultActivePokemonLimit:1}).battlefield,'grid');
+  const legacy={defaultActivePokemonLimit:2};
+  assert.equal(e.resolveCampaignRules(legacy).weather,false);
+  assert.equal(e.resolveCampaignRules(legacy).terrain,false);
+  const weather=e.setCampaignEnvironmentRule(legacy,'weather',true);
+  assert.equal(weather.weather,true); assert.equal(weather.terrain,false);
+  const both=e.setCampaignEnvironmentRule({...legacy,battleRules:weather},'terrain',true);
+  const persisted=JSON.parse(JSON.stringify({...legacy,battleRules:both}));
+  const enabled=e.createCampaignEncounter({...campaign,settings:persisted},'environment','wild',42);
+  assert.equal(enabled.rules.weather,true); assert.equal(enabled.rules.terrain,true);
+  const disabled=e.setCampaignEnvironmentRule(persisted,'weather',false);
+  assert.equal(disabled.weather,false); assert.equal(disabled.terrain,true);
+  assert.equal(enabled.rules.weather,true);
+  const custom=e.setCampaignEnvironmentRule(settings,'terrain',true);
+  assert.equal(custom.trackPP,false); assert.equal(custom.reactions,false);
+  assert.equal(custom.activePokemonLimit,settings.defaultActivePokemonLimit);
+
   assert.throws(()=>e.resolveCampaignRules({defaultActivePokemonLimit:0}));
   assert.throws(()=>e.resolveCampaignRules({defaultActivePokemonLimit:1,battleRules:{}}));
   assert.throws(()=>e.createCampaignEncounter({...campaign,status:'paused'},'x','wild',42));

@@ -15,6 +15,11 @@ export function resolveCampaignRules(settings: CampaignBattleSettings): RulesetS
   return restoreRulesetSnapshot({...base, activePokemonLimit: settings.defaultActivePokemonLimit});
 }
 
+/** Update one environmental flag without resetting other campaign rules. */
+export function setCampaignEnvironmentRule(settings: CampaignBattleSettings, flag: 'weather' | 'terrain', enabled: boolean): RulesetSnapshot {
+  return restoreRulesetSnapshot({...resolveCampaignRules(settings), [flag]: enabled});
+}
+
 /** Capture rules at encounter creation; later campaign edits cannot change an ongoing battle. */
 export function createCampaignEncounter(campaign: {readonly id:string; readonly status:string; readonly settings:CampaignBattleSettings}, id:string, kind:EncounterKind, seed:number): EncounterState {
   if (typeof campaign.id !== 'string' || !campaign.id.trim()) throw new Error('Invalid campaign identifier');

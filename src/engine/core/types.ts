@@ -78,6 +78,8 @@ export interface TurnState {
 }
 export type BattleResult = { readonly kind: "victory"; readonly winner: string } | { readonly kind: "draw" | "terminated"; readonly winner: null };
 export interface EncounterState {
+  readonly environment?: import('./environment').Environment;
+  readonly environmentEvents?: readonly string[];
   readonly battlefieldTerrain?: Readonly<Record<string, string>>;
   readonly campaignId?: string;
   readonly result?: BattleResult;

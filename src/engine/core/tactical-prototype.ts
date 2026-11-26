@@ -3,7 +3,7 @@ import { opportunityCandidates,statusRestrictions } from './status-rules';
 import { spendMovement,spendTurnResource } from './encounter';
 import type { EncounterState, Position } from './types';
 import type { GameDataRegistry } from '../data/registry';
-export type Terrain = 'normal'|'wall'|'blocked'|'difficult'|'water';
+export type Terrain = 'normal'|'wall'|'blocked'|'difficult'|'water'|'hazard';
 export type TerrainMap = Readonly<Record<string,Terrain>>;
 export const terrainKey=(p:Position)=>`${p.x},${p.y}`;
 export const terrainMultiplier=(terrain:Terrain)=>terrain==='wall'||terrain==='blocked'?Infinity:terrain==='difficult'||terrain==='water'?2:1;
